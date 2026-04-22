@@ -1,0 +1,12 @@
+venv/
+temp/
+logs/
+__pycache__/
+*.mp4
+*.mp3
+*.jpg
+*.jpeg
+*.png
+api/tiktok_cookies.txt
+.env
+.DS_Store

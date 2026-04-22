@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DispensIA</title>
+    <link rel="stylesheet" href="/frontend/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script 
+        async crossorigin="anonymous" 
+        data-clerk-publishable-key="pk_test_cGxlYXNhbnQtY2hpcG11bmstMzQuY2xlcmsuYWNjb3VudHMuZGV2JA" 
+        src="https://pleasant-chipmunk-34.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" 
+        type="text/javascript">
+    </script>
+</head>
+<body>
+
+    <header>
+        <div class="logo"><h1>Dispens<span>IA</span></h1></div>
+    </header>
+
+    <div id="login-screen" class="hidden">
+        <div class="login-card">
+            <h2>Benvenuto su DispensIA</h2>
+            <div id="sign-in-container"></div>
+        </div>
+    </div>
+
+    <div id="app-content" class="hidden">
+        <div class="app-container">
+            
+            <div id="view-home" class="view-section">
+                <section class="input-section">
+                    <div class="input-group">
+                        <input type="text" id="tiktok-url" placeholder="Incolla link TikTok...">
+                        <button id="extract-btn" onclick="extractRecipe()">Estrai</button>
+                    </div>
+                    <p id="status-msg"></p>
+                </section>
+
+                <div class="section-header">
+                    <h2>Il tuo Vault</h2>
+                    <div class="header-controls">
+                        <span id="recipe-count">0 ricette</span>
+                        <button id="toggle-view-btn" onclick="toggleLayout()">📋 Lista</button>
+                    </div>
+                </div>
+                <div id="recipes-grid" class="recipes-grid"></div>
+            </div>
+
+            <div id="view-cart" class="view-section hidden">
+                <div class="section-header"><h2>Lista Spesa</h2></div>
+                <div id="cart-content"></div>
+            </div>
+
+            <div id="view-settings" class="view-section hidden">
+                <div class="section-header"><h2>Impostazioni</h2></div>
+                <div class="settings-card">
+                    <div class="settings-profile">
+                        <span>Account</span>
+                        <div id="user-button-container"></div>
+                    </div>
+                    <div class="settings-links">
+                        <a href="#">Informazioni</a>
+                        <a href="#">Privacy</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <nav id="bottom-nav" class="bottom-nav hidden">
+        <div class="nav-item active" onclick="changeTab('home', this)">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">Home</span>
+        </div>
+        <div class="nav-item" onclick="changeTab('cart', this)">
+            <span class="nav-icon">🛒</span>
+            <span class="nav-label">Spesa</span>
+        </div>
+        <div class="nav-item" onclick="changeTab('settings', this)">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">Settings</span>
+        </div>
+    </nav>
+
+    <div id="recipe-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeModal()"></div>
+        <div class="modal-content">
+            <span class="close-x" onclick="closeModal()">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="/frontend/script.js"></script>
+</body>
+</html>
