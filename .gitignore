@@ -9,4 +9,5 @@ __pycache__/
 *.png
 api/tiktok_cookies.txt
 .env
-.DS_Store
+.DS_Storenode_modules/
+node_modules/
