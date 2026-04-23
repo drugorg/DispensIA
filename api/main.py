@@ -16,8 +16,9 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 
 app = FastAPI()
 client = openai.OpenAI()
+from fastapi.staticfiles import StaticFiles
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 
-# Configurazione CORS: Fondamentale per far parlare Frontend e Backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
