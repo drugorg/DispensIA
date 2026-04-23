@@ -32,14 +32,14 @@ app.add_middleware(
 # =================================================================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-FRONTEND_PATH = os.path.join(BASE_DIR, "frontend", "index.html")
+FRONTEND_PATH = os.path.join(BASE_DIR, "frontend", "dist", "index.html")
 TEMP_DIR = os.path.join(BASE_DIR, "temp")
 
 if not os.path.exists(TEMP_DIR):
     os.makedirs(TEMP_DIR)
 
 # Montaggio cartelle per file statici
-app.mount("/frontend", StaticFiles(directory=os.path.join(BASE_DIR, "frontend")), name="frontend")
+app.mount("/assets", StaticFiles(directory=os.path.join(BASE_DIR, "frontend", "dist", "assets")), name="assets")
 app.mount("/temp", StaticFiles(directory=TEMP_DIR), name="temp")
 
 # Recupero chiavi dalle variabili d'ambiente
