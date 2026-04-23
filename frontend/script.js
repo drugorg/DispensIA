@@ -1,4 +1,4 @@
-const API_BASE = "";
+const API_BASE = "https://dispensia.onrender.com";
 let userId = null;
 let allRecipes = [];
 let cartIds = [];
