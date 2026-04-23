@@ -86,7 +86,7 @@ async def extract_recipe(request: LinkRequest):
         # ==========================================
         existing_recipe = await global_recipes.find_one({"source_url": clean_url})
         if existing_recipe:
-            print("🟢 LIVELLO 0: MATCH TROVATO IN DATABASE! Costo: $0.00", flush=True)
+            print("🟢 LIVELLO 0: MATCH TROVATO IN DATABASE!", flush=True)
             recipe_id = existing_recipe["_id"]
             
         else:
@@ -185,6 +185,9 @@ async def extract_recipe(request: LinkRequest):
             if os.path.exists(f): os.remove(f)
 
 # --- ALTRE ROTTE (GET e DELETE) ---
+
+if len(recipe_data.get('ingredients', [])) == 0:
+    return {"error": "Non ho trovato ingredienti. Questo video sembra non avere testo o audio descrittivo."}
 
 @app.get("/recipes")
 async def get_recipes(user_id: str):

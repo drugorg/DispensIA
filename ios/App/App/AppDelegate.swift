@@ -22,7 +22,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {
-        // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
+        let appGroupID = "group.com.dispensia.app" // stesso ID che hai usato prima
+        if let containerURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupID
+        ) {
+            let videoURL = containerURL.appendingPathComponent("sharedVideo.mp4")
+            if FileManager.default.fileExists(atPath: videoURL.path) {
+                // Passa l'URL alla tua app web tramite Capacitor
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("VideoShared"),
+                    object: nil,
+                    userInfo: ["url": videoURL]
+                )
+                try? FileManager.default.removeItem(at: videoURL)
+            }
+        }
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
@@ -45,5 +59,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
+    
+    
 
 }

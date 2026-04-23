@@ -4,6 +4,23 @@ let allRecipes = [];
 let cartIds = [];
 let isListView = false;
 
+import { App } from '@capacitor/app';
+
+// Ascolta quando l'app viene aperta da un link esterno (Share Extension)
+App.addListener('appUrlOpen', data => {
+    // data.url sarà qualcosa tipo: dispensia://share?url=https://vm.tiktok.com/...
+    if (data.url.includes('share?url=')) {
+        // Estraiamo il link vero e proprio
+        const tiktokLink = decodeURIComponent(data.url.split('share?url=')[1]);
+        
+        // Lo incolliamo nel campo di testo
+        document.getElementById('tiktok-url').value = tiktokLink;
+        
+        // Simuliamo il click sul pulsante "Estrai"
+        extractRecipe();
+    }
+});
+
 async function init() {
     if (!window.Clerk) { setTimeout(init, 100); return; }
     try {
@@ -35,6 +52,7 @@ async function loadRecipes() {
     if(!userId) return;
     const res = await fetch(`${API_BASE}/recipes?user_id=${userId}`);
     allRecipes = await res.json();
+    allRecipes.reverse();
     const grid = document.getElementById('recipes-grid');
     document.getElementById('recipe-count').innerText = `${allRecipes.length} ricette`;
     grid.innerHTML = allRecipes.map(r => `
