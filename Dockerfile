@@ -14,5 +14,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia tutto il resto del tuo codice
 COPY . .
 
-# Accendi il server sulla porta 10000 (che è quella usata da Render)
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "10000"]
+# Accendi il server sulla porta assegnata da Render
+CMD uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-10000}
