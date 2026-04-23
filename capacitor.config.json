@@ -1,5 +1,9 @@
 {
   "appId": "com.dispensia.app",
   "appName": "DispensIA",
-  "webDir": "frontend"
+  "webDir": "frontend/dist",
+  "server": {
+    "url": "https://dispensia.onrender.com",
+    "cleartext": true
+  }
 }

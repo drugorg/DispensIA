@@ -46,3 +46,4 @@ urllib3==2.6.3
 uvicorn==0.39.0
 yt-dlp==2025.10.14
 python-dotenv==1.0.1
+Pillow
