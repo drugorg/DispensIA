@@ -18,8 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY frontend/package*.json ./frontend/
 RUN cd frontend && npm install
 
-COPY frontend/ ./frontend/
-RUN cd frontend && npm run build
+# COPY frontend/ ./frontend/
+# RUN cd frontend && npm run build
 
 # Copia tutto il resto del codice
 COPY . .
