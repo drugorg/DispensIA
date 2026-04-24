@@ -4,5 +4,15 @@
   "webDir": "frontend/dist",
   "ios": {
     "scheme": "dispensia"
+  },
+  "server": {
+    "hostname": "dispensia.app",
+    "iosScheme": "https",
+    "allowNavigation": [
+      "*.clerk.dispensia.app",
+      "clerk.dispensia.app",
+      "accounts.dispensia.app",
+      "*.clerk.services"
+    ]
   }
 }

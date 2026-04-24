@@ -6,7 +6,10 @@ import os
 import io
 import json
 import base64
+import re
 import requests
+import subprocess
+from urllib.parse import urlparse
 from PIL import Image
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
@@ -45,20 +48,177 @@ user_vaults = db.user_vaults
  
 client_ai = openai.OpenAI(api_key=OPENAI_KEY)
  
+ 
 class LinkRequest(BaseModel):
     url: str
     user_id: str
  
+ 
 # =================================================================
-# 🖼️ THUMBNAIL: scarica, ritaglia 9:16, comprimi → base64 (~15-25KB)
+# 🧭 PLATFORM DETECTION
+# =================================================================
+def detect_platform(url: str) -> str:
+    host = (urlparse(url).hostname or '').lower()
+    if 'tiktok.com' in host:
+        return 'tiktok'
+    if 'instagram.com' in host:
+        return 'instagram'
+    return 'unknown'
+ 
+ 
+def is_instagram_story(url: str) -> bool:
+    return '/stories/' in url.lower()
+ 
+ 
+# =================================================================
+# 🎬 METADATA EXTRACTION — multi-provider, multi-piattaforma
+# =================================================================
+def _fetch_tiktok_via_tikwm(clean_url: str) -> dict | None:
+    try:
+        res = requests.post(
+            "https://www.tikwm.com/api/",
+            data={'url': clean_url},
+            timeout=15,
+        ).json()
+        if 'data' in res and 'play' in res['data']:
+            d = res['data']
+            return {
+                'video_url': d['play'],
+                'thumb_url': d.get('cover', ''),
+                'desc': d.get('title', ''),
+                'has_video': True,
+                'source': 'tikwm',
+            }
+    except Exception as e:
+        print(f"⚠️  tikwm fallito: {e}", flush=True)
+    return None
+ 
+ 
+def _fetch_via_ytdlp(clean_url: str) -> dict | None:
+    """Funziona per TikTok, Instagram Reels e Post video."""
+    try:
+        result = subprocess.run(
+            ['yt-dlp', '--dump-json', '--no-playlist', '--skip-download', clean_url],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            err = result.stderr.lower()
+            if 'login' in err or 'private' in err or 'not available' in err:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Contenuto privato o non accessibile. Il profilo deve essere pubblico."
+                )
+            print(f"⚠️  yt-dlp errore: {result.stderr[:300]}", flush=True)
+            return None
+ 
+        info = json.loads(result.stdout)
+        video_url = info.get('url')
+        return {
+            'video_url': video_url,
+            'thumb_url': info.get('thumbnail', ''),
+            'desc': info.get('description') or info.get('title', '') or '',
+            'has_video': bool(video_url),
+            'source': 'yt-dlp',
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"⚠️  yt-dlp exception: {e}", flush=True)
+    return None
+ 
+ 
+def _fetch_instagram_photo_post(clean_url: str) -> dict | None:
+    """Fallback per Post Instagram solo foto: legge gli Open Graph tag."""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        resp = requests.get(clean_url, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            return None
+ 
+        html = resp.text
+ 
+        def og(prop: str) -> str:
+            m = re.search(
+                rf'<meta\s+property="og:{prop}"\s+content="([^"]*)"',
+                html,
+                re.IGNORECASE,
+            )
+            return m.group(1) if m else ''
+ 
+        desc = og('description')
+        img = og('image')
+        if not desc:
+            return None
+ 
+        return {
+            'video_url': None,
+            'thumb_url': img,
+            'desc': desc,
+            'has_video': False,
+            'source': 'og-tags',
+        }
+    except Exception as e:
+        print(f"⚠️  OG scrape fallito: {e}", flush=True)
+    return None
+ 
+ 
+def get_content_metadata(clean_url: str) -> dict:
+    """
+    Strategia:
+    - TikTok → tikwm primario, yt-dlp fallback
+    - Instagram Reel/Post video → yt-dlp
+    - Instagram Post foto → OG tags
+    """
+    platform = detect_platform(clean_url)
+ 
+    if platform == 'instagram' and is_instagram_story(clean_url):
+        raise HTTPException(
+            status_code=400,
+            detail="Le Stories Instagram non sono supportate. Usa un Reel o un Post."
+        )
+ 
+    if platform == 'tiktok':
+        print(">> tikwm...", flush=True)
+        data = _fetch_tiktok_via_tikwm(clean_url)
+        if data:
+            print(f"🟢 OK via {data['source']}", flush=True)
+            return data
+ 
+    print(">> yt-dlp...", flush=True)
+    data = _fetch_via_ytdlp(clean_url)
+    if data:
+        print(f"🟢 OK via {data['source']} (video={data['has_video']})", flush=True)
+        return data
+ 
+    if platform == 'instagram':
+        print(">> OG tags (post foto)...", flush=True)
+        data = _fetch_instagram_photo_post(clean_url)
+        if data:
+            print(f"🟢 OK via {data['source']}", flush=True)
+            return data
+ 
+    raise HTTPException(
+        status_code=503,
+        detail="Impossibile accedere al contenuto. Verifica che il link sia valido e il profilo pubblico."
+    )
+ 
+ 
+# =================================================================
+# 🖼️ THUMBNAIL → base64 (~15-25KB)
 # =================================================================
 def download_thumbnail_base64(thumb_url: str) -> str:
+    if not thumb_url:
+        return ""
     try:
         resp = requests.get(thumb_url, timeout=10)
         resp.raise_for_status()
         img = Image.open(io.BytesIO(resp.content)).convert("RGB")
  
-        # Ritaglia al centro in formato 9:16
         target_ratio = 9 / 16
         w, h = img.size
         current_ratio = w / h
@@ -72,15 +232,58 @@ def download_thumbnail_base64(thumb_url: str) -> str:
             img = img.crop((0, top, w, top + new_h))
  
         img = img.resize((200, 356), Image.LANCZOS)
- 
         buffer = io.BytesIO()
         img.save(buffer, format="JPEG", quality=60, optimize=True)
         encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
         return f"data:image/jpeg;base64,{encoded}"
- 
     except Exception as e:
         print(f"⚠️ Thumbnail non scaricabile: {e}", flush=True)
         return ""
+ 
+ 
+# =================================================================
+# 🧠 AI EXTRACTION
+# =================================================================
+SYSTEM_TEXT_ONLY = (
+    "Analizza il testo. Se contiene chiaramente una ricetta con ingredienti e quantità, "
+    'estraila in JSON: {"has_recipe": true, "titolo": "...", '
+    '"ingredienti": [{"nome": "...", "quantita": "..."}], "preparazione": ["..."]}. '
+    'Se NON contiene una ricetta o mancano gli ingredienti, restituisci SOLO: {"has_recipe": false}.'
+)
+ 
+SYSTEM_COMBINED = (
+    "Estrai ricetta in JSON rigoroso: {titolo, ingredienti: [{nome, quantita}], preparazione: []}. "
+    "Sii conciso e ignora le chiacchiere."
+)
+ 
+ 
+def extract_from_text(desc: str) -> dict | None:
+    res = client_ai.chat.completions.create(
+        model="gpt-4o-mini",
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": SYSTEM_TEXT_ONLY},
+            {"role": "user", "content": desc},
+        ],
+    )
+    data = json.loads(res.choices[0].message.content)
+    if data.get("has_recipe"):
+        data.pop("has_recipe", None)
+        return data
+    return None
+ 
+ 
+def extract_from_text_and_audio(desc: str, transcription: str) -> dict:
+    res = client_ai.chat.completions.create(
+        model="gpt-4o-mini",
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": SYSTEM_COMBINED},
+            {"role": "user", "content": f"Testo: {desc} | Audio: {transcription}"},
+        ],
+    )
+    return json.loads(res.choices[0].message.content)
+ 
  
 # =================================================================
 # 🟢 ROTTE API
@@ -90,110 +293,103 @@ def download_thumbnail_base64(thumb_url: str) -> str:
 async def health_check():
     return {"status": "DispensIA API online"}
  
+ 
 @app.post("/extract")
 async def extract_recipe(request: LinkRequest):
-    clean_url = request.url.split("?")[0]
+    clean_url = request.url.split("?")[0].rstrip('/')
     user_id = request.user_id
     unique_id = str(ObjectId())
+    platform = detect_platform(clean_url)
+ 
+    if platform == 'unknown':
+        raise HTTPException(
+            status_code=400,
+            detail="Link non riconosciuto. Supportiamo TikTok e Instagram."
+        )
  
     temp_video = os.path.join(TEMP_DIR, f"{unique_id}.mp4")
     temp_audio = os.path.join(TEMP_DIR, f"{unique_id}.mp3")
  
     try:
-        print(f"\n--- DISPENSIA ANALISI: {clean_url} ---", flush=True)
+        print(f"\n--- DISPENSIA [{platform.upper()}] {clean_url} ---", flush=True)
  
-        # 🛡️ LIVELLO 0: CACHING GLOBALE
-        existing_recipe = await global_recipes.find_one({"source_url": clean_url})
-        if existing_recipe:
-            print("🟢 LIVELLO 0: MATCH TROVATO IN DATABASE!", flush=True)
-            recipe_id = existing_recipe["_id"]
- 
+        existing = await global_recipes.find_one({"source_url": clean_url})
+        if existing:
+            print("🟢 già in database", flush=True)
+            recipe_id = existing["_id"]
         else:
-            print("🔴 NUOVA CLIP. Interrogo i server di TikTok...", flush=True)
-            res = requests.post("https://www.tikwm.com/api/", data={'url': clean_url}).json()
+            print("🔴 Nuova clip. Recupero metadati...", flush=True)
+            metadata = get_content_metadata(clean_url)
+            video_url = metadata['video_url']
+            thumb_url = metadata['thumb_url']
+            desc = metadata['desc']
+            has_video = metadata['has_video']
  
-            if 'data' in res and 'play' in res['data']:
-                video_url = res['data']['play']
-                thumb_url = res['data']['cover']
-                desc = res['data'].get('title', '')
-            else:
-                raise HTTPException(status_code=400, detail="TikTok ha bloccato la richiesta.")
- 
-            print(">> Download e compressione thumbnail...", flush=True)
+            print(">> Thumbnail...", flush=True)
             thumbnail_b64 = download_thumbnail_base64(thumb_url)
  
-            # 💡 LIVELLO 1: PIANO A (Descrizione testuale)
-            print(">> PIANO A: Controllo descrizione testuale...", flush=True)
-            plan_a_res = client_ai.chat.completions.create(
-                model="gpt-4o-mini",
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": "Analizza il testo. Se contiene chiaramente una ricetta con ingredienti e quantità, estraila in JSON: {\"has_recipe\": true, \"titolo\": \"...\", \"ingredienti\": [{\"nome\": \"...\", \"quantita\": \"...\"}], \"preparazione\": [\"...\"]}. Se NON contiene una ricetta o mancano gli ingredienti, restituisci SOLO: {\"has_recipe\": false}."},
-                    {"role": "user", "content": desc}
-                ]
-            )
+            # 💡 PIANO A: solo testo
+            print(">> PIANO A: analisi testo...", flush=True)
+            parsed = extract_from_text(desc)
  
-            plan_a_data = json.loads(plan_a_res.choices[0].message.content)
- 
-            if plan_a_data.get("has_recipe") == True:
-                print("🟢 Ricetta trovata nella descrizione!", flush=True)
-                parsed_data = plan_a_data
-                del parsed_data["has_recipe"]
-                parsed_data["source_url"] = clean_url
-                parsed_data["thumbnail"] = thumbnail_b64
-                insert_result = await global_recipes.insert_one(parsed_data)
-                recipe_id = insert_result.inserted_id
- 
+            if parsed:
+                print("🟢 Ricetta trovata nel testo!", flush=True)
+            elif not has_video:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Nessuna ricetta trovata nella descrizione di questo post. Prova con un Reel o un video."
+                )
             else:
-                # 🔊 LIVELLO 2: PIANO B (Audio + Whisper)
-                print("🟡 PIANO B: Download video e analisi audio...", flush=True)
-                headers = {'User-Agent': 'TikTok 26.2.3 rv:262318 (iPhone; iOS 14.4.2; sv_SE) Cronet'}
-                video_data = requests.get(video_url, headers=headers).content
+                # 🔊 PIANO B: audio + testo
+                print("🟡 PIANO B: video + audio...", flush=True)
+                headers = {
+                    'User-Agent': 'TikTok 26.2.3 rv:262318 (iPhone; iOS 14.4.2; sv_SE) Cronet'
+                }
+                video_data = requests.get(video_url, headers=headers, timeout=30).content
                 with open(temp_video, 'wb') as f:
                     f.write(video_data)
  
-                os.system(f'ffmpeg -i {temp_video} -vn -af "silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-30dB,atempo=1.5" -b:a 64k {temp_audio} -y > /dev/null 2>&1')
- 
+                os.system(
+                    f'ffmpeg -i {temp_video} -vn '
+                    f'-af "silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-30dB,atempo=1.5" '
+                    f'-b:a 64k {temp_audio} -y > /dev/null 2>&1'
+                )
                 audio_path = temp_audio if os.path.exists(temp_audio) else temp_video
  
-                print(">> Trascrizione Whisper...", flush=True)
+                print(">> Whisper...", flush=True)
                 with open(audio_path, "rb") as f:
                     transcription = client_ai.audio.transcriptions.create(
                         model="whisper-1",
                         file=("audio.mp3", f, "audio/mpeg"),
-                        language="it"
+                        language="it",
                     )
  
-                print(">> Generazione JSON...", flush=True)
-                ai_res = client_ai.chat.completions.create(
-                    model="gpt-4o-mini",
-                    response_format={"type": "json_object"},
-                    messages=[
-                        {"role": "system", "content": "Estrai ricetta in JSON rigoroso: {titolo, ingredienti: [{nome, quantita}], preparazione: []}. Sii conciso e ignora le chiacchiere."},
-                        {"role": "user", "content": f"Testo: {desc} | Audio: {transcription.text}"}
-                    ]
-                )
+                print(">> JSON finale...", flush=True)
+                parsed = extract_from_text_and_audio(desc, transcription.text)
  
-                parsed_data = json.loads(ai_res.choices[0].message.content)
-                parsed_data["source_url"] = clean_url
-                parsed_data["thumbnail"] = thumbnail_b64
-                insert_result = await global_recipes.insert_one(parsed_data)
-                recipe_id = insert_result.inserted_id
+            parsed["source_url"] = clean_url
+            parsed["thumbnail"] = thumbnail_b64
+            parsed["platform"] = platform
+            result = await global_recipes.insert_one(parsed)
+            recipe_id = result.inserted_id
  
-        # 🔗 SALVATAGGIO NEL VAULT DELL'UTENTE
         await user_vaults.update_one(
             {"user_id": user_id, "recipe_id": recipe_id},
             {"$set": {"user_id": user_id, "recipe_id": recipe_id}},
-            upsert=True
+            upsert=True,
         )
         return {"status": "success"}
  
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"🚨 ERRORE: {str(e)}", flush=True)
         raise HTTPException(status_code=400, detail=str(e))
     finally:
         for f in [temp_video, temp_audio]:
-            if os.path.exists(f): os.remove(f)
+            if os.path.exists(f):
+                os.remove(f)
+ 
  
 @app.get("/recipes")
 async def get_recipes(user_id: str):
@@ -206,6 +402,7 @@ async def get_recipes(user_id: str):
         r["_id"] = str(r["_id"])
         recipes.append(r)
     return recipes
+ 
  
 @app.delete("/recipes/{recipe_id}")
 async def delete_recipe(recipe_id: str, user_id: str):

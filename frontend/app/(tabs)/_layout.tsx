@@ -1,0 +1,97 @@
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { View, Text } from 'react-native';
+import { colors } from '../../lib/theme';
+import { useCartStore } from '../../lib/cartStore';
+
+function CartIcon({ color, size }: { color: string; size: number }) {
+  const count = useCartStore((s) => s.cartIds.length);
+  return (
+    <View>
+      <Ionicons name="cart-outline" size={size} color={color} />
+      {count > 0 && (
+        <View
+          style={{
+            position: 'absolute',
+            top: -4,
+            right: -8,
+            backgroundColor: colors.accent,
+            borderRadius: 9,
+            minWidth: 18,
+            height: 18,
+            paddingHorizontal: 4,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>{count}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+export default function TabsLayout() {
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.text3,
+        tabBarStyle: {
+          backgroundColor: colors.bg2,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          height: 88,
+          paddingTop: 10,
+          paddingBottom: 28,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Vault',
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="add"
+        options={{
+          title: 'Aggiungi',
+          tabBarIcon: ({ color }) => (
+            <View
+              style={{
+                backgroundColor: colors.accent,
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: -12,
+              }}
+            >
+              <Ionicons name="add" size={28} color="white" />
+            </View>
+          ),
+          tabBarLabel: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="cart"
+        options={{
+          title: 'Spesa',
+          tabBarIcon: CartIcon,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Profilo',
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
+        }}
+      />
+    </Tabs>
+  );
+}
