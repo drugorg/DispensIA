@@ -2,27 +2,50 @@ import { useUser } from '@clerk/clerk-expo';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   Alert,
   RefreshControl,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchRecipes, deleteRecipe, Recipe } from '../../lib/api';
 import { useCartStore } from '../../lib/cartStore';
 import { colors } from '../../lib/theme';
 
+function SkeletonCard() {
+  const opacity = useSharedValue(0.4);
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(1, { duration: 750 }), -1, true);
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View style={[styles.card, animStyle, { flex: 1 }]}>
+      <View style={[styles.cardImage, { backgroundColor: colors.bg3 }]} />
+      <View style={{ padding: 10, gap: 6 }}>
+        <View style={{ height: 12, backgroundColor: colors.bg3, borderRadius: 6, width: '80%' }} />
+        <View style={{ height: 10, backgroundColor: colors.bg3, borderRadius: 5, width: '45%' }} />
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function VaultScreen() {
   const { user } = useUser();
   const qc = useQueryClient();
-  const { remove } = useCartStore();
+  const { remove, isInCart } = useCartStore();
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: recipes = [], isLoading } = useQuery({
@@ -53,36 +76,45 @@ export default function VaultScreen() {
     setRefreshing(false);
   };
 
-  const renderCard = ({ item }: { item: Recipe }) => (
-    <Pressable
-      style={styles.card}
-      onPress={() => router.push(`/recipe/${item._id}` as any)}
-      onLongPress={() => handleDelete(item._id, item.titolo)}
-    >
-      {item.thumbnail ? (
-        <Image source={{ uri: item.thumbnail }} style={styles.cardImage} contentFit="cover" />
-      ) : (
-        <View style={[styles.cardImage, { backgroundColor: colors.bg3, alignItems: 'center', justifyContent: 'center' }]}>
-          <Text style={{ fontSize: 32 }}>🍽️</Text>
-        </View>
-      )}
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={2}>
-          {item.titolo}
-        </Text>
-      </View>
+  const renderCard = ({ item }: { item: Recipe }) => {
+    const inCart = isInCart(item._id);
+    return (
       <Pressable
-        style={styles.deleteBadge}
-        onPress={(e) => {
-          e.stopPropagation?.();
-          handleDelete(item._id, item.titolo);
-        }}
-        hitSlop={10}
+        style={styles.card}
+        onPress={() => router.push(`/recipe/${item._id}` as any)}
+        onLongPress={() => handleDelete(item._id, item.titolo)}
       >
-        <Ionicons name="close" size={14} color={colors.text2} />
+        {item.thumbnail ? (
+          <Image source={{ uri: item.thumbnail }} style={styles.cardImage} contentFit="cover" />
+        ) : (
+          <View style={[styles.cardImage, { backgroundColor: colors.bg3, alignItems: 'center', justifyContent: 'center' }]}>
+            <Text style={{ fontSize: 32 }}>🍽️</Text>
+          </View>
+        )}
+
+        {inCart && (
+          <View style={styles.cartBadge}>
+            <Ionicons name="bag-check" size={12} color="white" />
+          </View>
+        )}
+
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={2}>{item.titolo}</Text>
+          {(item.ingredienti?.length ?? 0) > 0 && (
+            <Text style={styles.cardMeta}>{item.ingredienti.length} ingredienti</Text>
+          )}
+        </View>
+
+        <Pressable
+          style={styles.deleteBadge}
+          onPress={(e) => { e.stopPropagation?.(); handleDelete(item._id, item.titolo); }}
+          hitSlop={10}
+        >
+          <Ionicons name="close" size={14} color={colors.text2} />
+        </Pressable>
       </Pressable>
-    </Pressable>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -96,14 +128,20 @@ export default function VaultScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} size="large" />
-        </View>
+        <FlatList
+          data={[1, 2, 3, 4]}
+          renderItem={() => <SkeletonCard />}
+          keyExtractor={(item) => String(item)}
+          numColumns={2}
+          columnWrapperStyle={{ gap: 12, paddingHorizontal: 16 }}
+          contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+          scrollEnabled={false}
+        />
       ) : recipes.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🍲</Text>
           <Text style={styles.emptyTitle}>Il tuo Vault è vuoto</Text>
-          <Text style={styles.emptySub}>Premi il pulsante + per aggiungere la prima ricetta TikTok</Text>
+          <Text style={styles.emptySub}>Premi + per salvare la prima ricetta da TikTok o Instagram</Text>
         </View>
       ) : (
         <FlatList
@@ -141,7 +179,6 @@ const styles = StyleSheet.create({
     borderRadius: 100,
   },
   pillText: { color: colors.text2, fontSize: 12, fontWeight: '600' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 12 },
   emptyIcon: { fontSize: 56, opacity: 0.4 },
   emptyTitle: { color: colors.text2, fontSize: 17, fontWeight: '700' },
@@ -155,8 +192,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardImage: { width: '100%', aspectRatio: 9 / 16 },
-  cardBody: { padding: 10 },
+  cardBody: { padding: 10, gap: 3 },
   cardTitle: { color: colors.text, fontSize: 13, fontWeight: '600', lineHeight: 17 },
+  cardMeta: { color: colors.text3, fontSize: 11 },
+  cartBadge: {
+    position: 'absolute',
+    bottom: 54,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   deleteBadge: {
     position: 'absolute',
     top: 8,

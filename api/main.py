@@ -52,6 +52,17 @@ client_ai = openai.OpenAI(api_key=OPENAI_KEY)
 class LinkRequest(BaseModel):
     url: str
     user_id: str
+
+
+class IngredientUpdate(BaseModel):
+    nome: str
+    quantita: str
+
+
+class RecipeUpdate(BaseModel):
+    titolo: str | None = None
+    ingredienti: list[IngredientUpdate] | None = None
+    preparazione: list[str] | None = None
  
  
 # =================================================================
@@ -247,12 +258,15 @@ def download_thumbnail_base64(thumb_url: str) -> str:
 SYSTEM_TEXT_ONLY = (
     "Analizza il testo. Se contiene chiaramente una ricetta con ingredienti e quantità, "
     'estraila in JSON: {"has_recipe": true, "titolo": "...", '
+    '"porzioni": <numero intero di persone se esplicitamente menzionato altrimenti null>, '
     '"ingredienti": [{"nome": "...", "quantita": "..."}], "preparazione": ["..."]}. '
     'Se NON contiene una ricetta o mancano gli ingredienti, restituisci SOLO: {"has_recipe": false}.'
 )
  
 SYSTEM_COMBINED = (
-    "Estrai ricetta in JSON rigoroso: {titolo, ingredienti: [{nome, quantita}], preparazione: []}. "
+    "Estrai ricetta in JSON rigoroso: {titolo, "
+    "porzioni: <numero intero persone se menzionato esplicitamente altrimenti null>, "
+    "ingredienti: [{nome, quantita}], preparazione: []}. "
     "Sii conciso e ignora le chiacchiere."
 )
  
@@ -408,3 +422,36 @@ async def get_recipes(user_id: str):
 async def delete_recipe(recipe_id: str, user_id: str):
     await user_vaults.delete_one({"user_id": user_id, "recipe_id": ObjectId(recipe_id)})
     return {"status": "unlinked"}
+
+
+@app.patch("/recipes/{recipe_id}")
+async def update_recipe(recipe_id: str, user_id: str, update: RecipeUpdate):
+    oid = ObjectId(recipe_id)
+    update_data = {}
+    if update.titolo is not None:
+        update_data["titolo"] = update.titolo
+    if update.ingredienti is not None:
+        update_data["ingredienti"] = [i.model_dump() for i in update.ingredienti]
+    if update.preparazione is not None:
+        update_data["preparazione"] = update.preparazione
+    if not update_data:
+        return {"status": "ok"}
+
+    ref_count = await user_vaults.count_documents({"recipe_id": oid})
+
+    if ref_count > 1:
+        original = await global_recipes.find_one({"_id": oid})
+        if not original:
+            raise HTTPException(status_code=404, detail="Ricetta non trovata")
+        new_doc = {k: v for k, v in original.items() if k != "_id"}
+        new_doc.update(update_data)
+        new_doc.pop("source_url", None)
+        result = await global_recipes.insert_one(new_doc)
+        await user_vaults.update_one(
+            {"user_id": user_id, "recipe_id": oid},
+            {"$set": {"recipe_id": result.inserted_id}},
+        )
+    else:
+        await global_recipes.update_one({"_id": oid}, {"$set": update_data})
+
+    return {"status": "ok"}

@@ -8,10 +8,12 @@ export interface Ingredient {
 export interface Recipe {
   _id: string;
   titolo: string;
+  porzioni?: number | null;
   ingredienti: Ingredient[];
   preparazione: string[];
   thumbnail?: string;
   source_url?: string;
+  platform?: string;
 }
 
 export async function fetchRecipes(userId: string): Promise<Recipe[]> {
@@ -26,7 +28,10 @@ export async function extractRecipe(url: string, userId: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url, user_id: userId }),
   });
-  if (!res.ok) throw new Error('Impossibile estrarre la ricetta');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Impossibile estrarre la ricetta');
+  }
   return res.json();
 }
 
@@ -35,5 +40,19 @@ export async function deleteRecipe(recipeId: string, userId: string) {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Errore nella cancellazione');
+  return res.json();
+}
+
+export async function updateRecipe(
+  recipeId: string,
+  userId: string,
+  data: { titolo: string; ingredienti: Ingredient[]; preparazione: string[] }
+) {
+  const res = await fetch(`${API_BASE}/recipes/${recipeId}?user_id=${userId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Errore nel salvataggio');
   return res.json();
 }

@@ -1,5 +1,5 @@
 import { useUser } from '@clerk/clerk-expo';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
@@ -16,20 +16,35 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { extractRecipe } from '../../lib/api';
+import { extractRecipe, fetchRecipes } from '../../lib/api';
 import { colors } from '../../lib/theme';
 
-const steps = [
-  { icon: '📱', label: 'Apri TikTok', sub: 'Trova il video ricetta che ti interessa' },
+const STEPS = [
+  { icon: '📱', label: 'Apri il video', sub: 'Trova la ricetta su TikTok, Instagram o altri social' },
   { icon: '🔗', label: 'Copia il link', sub: 'Tocca "Condividi" → "Copia link"' },
-  { icon: '📋', label: 'Incolla qui', sub: 'Premi Estrai e lascia fare all\'AI' },
+  { icon: '📋', label: 'Incolla qui', sub: "Premi Estrai e lascia fare all'AI" },
 ];
+
+function detectPlatform(url: string): 'tiktok' | 'instagram' | null {
+  if (url.includes('tiktok.com')) return 'tiktok';
+  if (url.includes('instagram.com')) return 'instagram';
+  return null;
+}
 
 export default function AddScreen() {
   const { user } = useUser();
   const qc = useQueryClient();
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const { data: recipes = [] } = useQuery({
+    queryKey: ['recipes', user?.id],
+    queryFn: () => fetchRecipes(user!.id),
+    enabled: !!user?.id,
+  });
+
+  const platform = detectPlatform(url);
 
   const mut = useMutation({
     mutationFn: () => extractRecipe(url, user!.id),
@@ -42,9 +57,10 @@ export default function AddScreen() {
         router.push('/(tabs)');
       }, 1500);
     },
-    onError: () => {
+    onError: (e: Error) => {
+      setErrorMsg(e.message || 'Impossibile estrarre. Riprova.');
       setStatus('error');
-      setTimeout(() => setStatus('idle'), 3000);
+      setTimeout(() => setStatus('idle'), 4000);
     },
   });
 
@@ -67,16 +83,29 @@ export default function AddScreen() {
 
           <View style={styles.titleWrap}>
             <Text style={styles.title}>Aggiungi ricetta</Text>
-            <Text style={styles.subtitle}>Incolla un link TikTok e l'AI farà il resto</Text>
+            <Text style={styles.subtitle}>Incolla un link e l'AI estrae la ricetta per te</Text>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.label}>LINK TIKTOK</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>LINK VIDEO</Text>
+              {platform === 'tiktok' && (
+                <View style={styles.platformBadge}>
+                  <Text style={styles.platformText}>TikTok</Text>
+                </View>
+              )}
+              {platform === 'instagram' && (
+                <View style={[styles.platformBadge, { backgroundColor: 'rgba(225,48,108,0.12)', borderColor: 'rgba(225,48,108,0.25)' }]}>
+                  <Text style={[styles.platformText, { color: '#e1306c' }]}>Instagram</Text>
+                </View>
+              )}
+            </View>
+
             <View style={styles.inputWrap}>
               <Ionicons name="link" size={18} color={colors.text3} />
               <TextInput
                 style={styles.input}
-                placeholder="Link TikTok o Instagram..."
+                placeholder="Link TikTok, Instagram..."
                 placeholderTextColor={colors.text3}
                 value={url}
                 onChangeText={setUrl}
@@ -111,7 +140,7 @@ export default function AddScreen() {
             )}
             {status === 'error' && (
               <View style={[styles.toast, { backgroundColor: 'rgba(255,59,48,0.1)', borderColor: 'rgba(255,59,48,0.3)' }]}>
-                <Text style={[styles.toastText, { color: colors.red }]}>✗ Impossibile estrarre. Riprova.</Text>
+                <Text style={[styles.toastText, { color: colors.red }]}>{errorMsg}</Text>
               </View>
             )}
             {mut.isPending && (
@@ -121,21 +150,25 @@ export default function AddScreen() {
             )}
           </View>
 
-          <Text style={styles.sectionLabel}>COME FUNZIONA</Text>
-          <View style={{ gap: 10, paddingHorizontal: 16 }}>
-            {steps.map((s, i) => (
-              <View key={i} style={styles.stepCard}>
-                <Text style={{ fontSize: 22 }}>{s.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.stepLabel}>{s.label}</Text>
-                  <Text style={styles.stepSub}>{s.sub}</Text>
-                </View>
-                <View style={styles.stepNum}>
-                  <Text style={styles.stepNumText}>{i + 1}</Text>
-                </View>
+          {recipes.length === 0 && (
+            <>
+              <Text style={styles.sectionLabel}>COME FUNZIONA</Text>
+              <View style={{ gap: 10, paddingHorizontal: 16 }}>
+                {STEPS.map((s, i) => (
+                  <View key={i} style={styles.stepCard}>
+                    <Text style={{ fontSize: 22 }}>{s.icon}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.stepLabel}>{s.label}</Text>
+                      <Text style={styles.stepSub}>{s.sub}</Text>
+                    </View>
+                    <View style={styles.stepNum}>
+                      <Text style={styles.stepNumText}>{i + 1}</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -158,13 +191,17 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 24,
   },
-  label: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    color: colors.text3,
-    marginBottom: 10,
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  label: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, color: colors.text3 },
+  platformBadge: {
+    backgroundColor: 'rgba(255,107,53,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
+  platformText: { color: colors.accent, fontSize: 10, fontWeight: '700' },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
