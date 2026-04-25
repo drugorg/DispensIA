@@ -45,6 +45,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "45fe0b74-c230-4c8a-9a80-c0faf484084b"
+      }
+    },
+    "owner": "drugorg"
   }
 }
