@@ -31,6 +31,18 @@
       "expo-dev-client",
       "expo-router",
       [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsWebPageWithMaxCount": 1
+          },
+          "iosAppGroupIdentifier": "group.com.dispensia.app",
+          "iosShareExtensionName": "DispensIA Share",
+          "androidIntentFilters": ["text/*"]
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",

@@ -1,8 +1,9 @@
 import { useUser } from '@clerk/clerk-expo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as Clipboard from 'expo-clipboard';
+import { useShareIntentContext } from 'expo-share-intent';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -30,6 +31,7 @@ export default function AddScreen() {
   const { user } = useUser();
   const qc = useQueryClient();
   const { t, i18n } = useTranslation();
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -43,7 +45,7 @@ export default function AddScreen() {
   const platform = detectPlatform(url);
 
   const mut = useMutation({
-    mutationFn: () => extractRecipe(url, user!.id, i18n.language),
+    mutationFn: (urlToExtract: string) => extractRecipe(urlToExtract, user!.id, i18n.language),
     onSuccess: () => {
       setStatus('success');
       setUrl('');
@@ -59,6 +61,15 @@ export default function AddScreen() {
       setTimeout(() => setStatus('idle'), 4000);
     },
   });
+
+  useEffect(() => {
+    if (hasShareIntent && shareIntent?.webUrl && user?.id && !mut.isPending) {
+      const sharedUrl = shareIntent.webUrl;
+      setUrl(sharedUrl);
+      resetShareIntent();
+      mut.mutate(sharedUrl);
+    }
+  }, [hasShareIntent, shareIntent, user?.id]);
 
   const handlePaste = async () => {
     try {
@@ -122,7 +133,7 @@ export default function AddScreen() {
 
             <Pressable
               style={[styles.extractBtn, (!url.trim() || mut.isPending) && { opacity: 0.5 }]}
-              onPress={() => mut.mutate()}
+              onPress={() => mut.mutate(url.trim())}
               disabled={!url.trim() || mut.isPending}
             >
               {mut.isPending ? (

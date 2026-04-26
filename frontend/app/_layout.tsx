@@ -3,6 +3,7 @@ import { ClerkProvider, ClerkLoaded, useAuth } from '@clerk/clerk-expo';
 import { tokenCache } from '@clerk/clerk-expo/token-cache';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
@@ -15,6 +16,7 @@ function AuthGate() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const { hasShareIntent } = useShareIntentContext();
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -24,14 +26,17 @@ function AuthGate() {
       router.replace('/(auth)/login');
     } else if (isSignedIn && inAuthGroup) {
       router.replace('/(tabs)');
+    } else if (isSignedIn && hasShareIntent) {
+      router.push('/(tabs)/add');
     }
-  }, [isLoaded, isSignedIn, segments]);
+  }, [isLoaded, isSignedIn, segments, hasShareIntent]);
 
   return null;
 }
 
 export default function RootLayout() {
   return (
+    <ShareIntentProvider>
     <ClerkProvider tokenCache={tokenCache} publishableKey={CLERK_KEY}>
       <ClerkLoaded>
         <QueryClientProvider client={queryClient}>
@@ -52,5 +57,6 @@ export default function RootLayout() {
         </QueryClientProvider>
       </ClerkLoaded>
     </ClerkProvider>
+    </ShareIntentProvider>
   );
 }
