@@ -259,7 +259,7 @@ def download_thumbnail_base64(thumb_url: str) -> str:
 _LANG_RULE = (
     "REGOLA LINGUA (OBBLIGATORIA, SENZA ECCEZIONI): "
     "Ogni singolo campo testuale dell'output JSON — titolo, ingredienti[].nome, "
-    "ingredienti[].quantita (la parte testuale), ogni elemento di preparazione[] — "
+    "ingredienti[].quantita, ogni elemento di preparazione[] — "
     "DEVE essere scritto ESCLUSIVAMENTE in lingua \"{lang}\". "
     "Mescolare lingue diverse nel JSON è assolutamente vietato. "
     "Se il contenuto del video è in un'altra lingua, traduci TUTTO in \"{lang}\" senza eccezioni. "
@@ -267,28 +267,49 @@ _LANG_RULE = (
     "Non lasciare mai nessun campo in una lingua diversa da \"{lang}\"."
 )
 
+_ING_RULE = (
+    "REGOLE INGREDIENTI: "
+    "(1) Il campo 'nome' di ogni ingrediente deve avere la prima lettera maiuscola (es. 'Olio di sesamo'). "
+    "(2) Il campo 'quantita' NON deve mai essere vuoto o null: "
+    "se la quantità non è specificata o non è determinabile, scrivi il termine per 'quanto basta' "
+    "nella lingua \"{lang}\" (it: 'q.b.', en: 'to taste', fr: 'q.s.', es: 'c.s.')."
+)
+
 
 def _system_text_only(lang: str) -> str:
     lang_rule = _LANG_RULE.replace('"{lang}"', f'"{lang}"')
+    ing_rule = _ING_RULE.replace('"{lang}"', f'"{lang}"')
     return (
         f"Analizza il testo. Se contiene chiaramente una ricetta con ingredienti e quantità, "
         f'estraila in JSON: {{"has_recipe": true, "titolo": "...", '
         f'"porzioni": <numero intero di persone se esplicitamente menzionato altrimenti null>, '
         f'"ingredienti": [{{"nome": "...", "quantita": "..."}}], "preparazione": ["..."]}}. '
-        f'{lang_rule} '
+        f'{lang_rule} {ing_rule} '
         f'Se NON contiene una ricetta o mancano gli ingredienti, restituisci SOLO: {{"has_recipe": false}}.'
     )
 
 
 def _system_combined(lang: str) -> str:
     lang_rule = _LANG_RULE.replace('"{lang}"', f'"{lang}"')
+    ing_rule = _ING_RULE.replace('"{lang}"', f'"{lang}"')
     return (
         f"Estrai la ricetta in JSON rigoroso: {{titolo, "
         f"porzioni: <numero intero persone se menzionato esplicitamente altrimenti null>, "
         f"ingredienti: [{{nome, quantita}}], preparazione: []}}. "
-        f'{lang_rule} '
+        f'{lang_rule} {ing_rule} '
         f"Sii conciso e ignora le chiacchiere."
     )
+
+
+def _normalize_parsed(parsed: dict, lang: str) -> dict:
+    """Post-process AI output: capitalize ingredient names, fill empty quantities."""
+    qb = {"it": "q.b.", "en": "to taste", "fr": "q.s.", "es": "c.s."}.get(lang, "q.b.")
+    for ing in parsed.get("ingredienti", []):
+        nome = (ing.get("nome") or "").strip()
+        ing["nome"] = nome[0].upper() + nome[1:] if nome else nome
+        qty = (ing.get("quantita") or "").strip()
+        ing["quantita"] = qty if qty else qb
+    return parsed
  
  
 def extract_from_text(desc: str, lang: str = "it") -> dict | None:
@@ -401,6 +422,7 @@ async def extract_recipe(request: LinkRequest):
                 print(">> JSON finale...", flush=True)
                 parsed = extract_from_text_and_audio(desc, transcription.text, lang)
  
+            parsed = _normalize_parsed(parsed, lang)
             parsed["source_url"] = clean_url
             parsed["thumbnail"] = thumbnail_b64
             parsed["platform"] = platform
