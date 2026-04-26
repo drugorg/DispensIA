@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -19,12 +20,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { extractRecipe, fetchRecipes } from '../../lib/api';
 import { colors } from '../../lib/theme';
 
-const STEPS = [
-  { icon: '📱', label: 'Apri il video', sub: 'Trova la ricetta su TikTok, Instagram o altri social' },
-  { icon: '🔗', label: 'Copia il link', sub: 'Tocca "Condividi" → "Copia link"' },
-  { icon: '📋', label: 'Incolla qui', sub: "Premi Estrai e lascia fare all'AI" },
-];
-
 function detectPlatform(url: string): 'tiktok' | 'instagram' | null {
   if (url.includes('tiktok.com')) return 'tiktok';
   if (url.includes('instagram.com')) return 'instagram';
@@ -34,6 +29,7 @@ function detectPlatform(url: string): 'tiktok' | 'instagram' | null {
 export default function AddScreen() {
   const { user } = useUser();
   const qc = useQueryClient();
+  const { t, i18n } = useTranslation();
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -47,7 +43,7 @@ export default function AddScreen() {
   const platform = detectPlatform(url);
 
   const mut = useMutation({
-    mutationFn: () => extractRecipe(url, user!.id),
+    mutationFn: () => extractRecipe(url, user!.id, i18n.language),
     onSuccess: () => {
       setStatus('success');
       setUrl('');
@@ -58,7 +54,7 @@ export default function AddScreen() {
       }, 1500);
     },
     onError: (e: Error) => {
-      setErrorMsg(e.message || 'Impossibile estrarre. Riprova.');
+      setErrorMsg(e.message || t('add.error'));
       setStatus('error');
       setTimeout(() => setStatus('idle'), 4000);
     },
@@ -71,6 +67,12 @@ export default function AddScreen() {
     } catch {}
   };
 
+  const steps = [
+    { icon: '📱', label: t('add.step1Label'), sub: t('add.step1Sub') },
+    { icon: '🔗', label: t('add.step2Label'), sub: t('add.step2Sub') },
+    { icon: '📋', label: t('add.step3Label'), sub: t('add.step3Sub') },
+  ];
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -82,13 +84,13 @@ export default function AddScreen() {
           </View>
 
           <View style={styles.titleWrap}>
-            <Text style={styles.title}>Aggiungi ricetta</Text>
-            <Text style={styles.subtitle}>Incolla un link e l'AI estrae la ricetta per te</Text>
+            <Text style={styles.title}>{t('add.title')}</Text>
+            <Text style={styles.subtitle}>{t('add.subtitle')}</Text>
           </View>
 
           <View style={styles.card}>
             <View style={styles.labelRow}>
-              <Text style={styles.label}>LINK VIDEO</Text>
+              <Text style={styles.label}>{t('add.label')}</Text>
               {platform === 'tiktok' && (
                 <View style={styles.platformBadge}>
                   <Text style={styles.platformText}>TikTok</Text>
@@ -105,7 +107,7 @@ export default function AddScreen() {
               <Ionicons name="link" size={18} color={colors.text3} />
               <TextInput
                 style={styles.input}
-                placeholder="Link TikTok, Instagram..."
+                placeholder={t('add.placeholder')}
                 placeholderTextColor={colors.text3}
                 value={url}
                 onChangeText={setUrl}
@@ -114,7 +116,7 @@ export default function AddScreen() {
               />
               <Pressable onPress={handlePaste} style={styles.pasteBtn}>
                 <Ionicons name="clipboard-outline" size={14} color={colors.text2} />
-                <Text style={styles.pasteText}>Incolla</Text>
+                <Text style={styles.pasteText}>{t('add.paste')}</Text>
               </Pressable>
             </View>
 
@@ -126,16 +128,16 @@ export default function AddScreen() {
               {mut.isPending ? (
                 <>
                   <ActivityIndicator color="white" />
-                  <Text style={styles.extractText}>Analisi in corso...</Text>
+                  <Text style={styles.extractText}>{t('add.extracting')}</Text>
                 </>
               ) : (
-                <Text style={styles.extractText}>Estrai ricetta</Text>
+                <Text style={styles.extractText}>{t('add.extract')}</Text>
               )}
             </Pressable>
 
             {status === 'success' && (
               <View style={[styles.toast, { backgroundColor: 'rgba(48,217,104,0.1)', borderColor: 'rgba(48,217,104,0.3)' }]}>
-                <Text style={[styles.toastText, { color: colors.green }]}>✓ Ricetta salvata nel tuo Vault!</Text>
+                <Text style={[styles.toastText, { color: colors.green }]}>{t('add.success')}</Text>
               </View>
             )}
             {status === 'error' && (
@@ -145,16 +147,16 @@ export default function AddScreen() {
             )}
             {mut.isPending && (
               <View style={[styles.toast, { backgroundColor: 'rgba(255,107,53,0.08)', borderColor: 'rgba(255,107,53,0.2)' }]}>
-                <Text style={[styles.toastText, { color: colors.accent2 }]}>🤖 Può richiedere 10-30 secondi</Text>
+                <Text style={[styles.toastText, { color: colors.accent2 }]}>{t('add.wait')}</Text>
               </View>
             )}
           </View>
 
           {recipes.length === 0 && (
             <>
-              <Text style={styles.sectionLabel}>COME FUNZIONA</Text>
+              <Text style={styles.sectionLabel}>{t('add.howTitle')}</Text>
               <View style={{ gap: 10, paddingHorizontal: 16 }}>
-                {STEPS.map((s, i) => (
+                {steps.map((s, i) => (
                   <View key={i} style={styles.stepCard}>
                     <Text style={{ fontSize: 22 }}>{s.icon}</Text>
                     <View style={{ flex: 1 }}>

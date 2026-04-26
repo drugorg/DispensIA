@@ -1,5 +1,6 @@
 import { useUser } from '@clerk/clerk-expo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -55,6 +56,7 @@ export default function RecipeDetail() {
   const { user } = useUser();
   const { toggle, isInCart } = useCartStore();
   const qc = useQueryClient();
+  const { t } = useTranslation();
 
   const [checked, setChecked] = useState<number[]>([]);
   const [editMode, setEditMode] = useState(false);
@@ -104,9 +106,9 @@ export default function RecipeDetail() {
   if (!recipe) {
     return (
       <SafeAreaView style={styles.empty}>
-        <Text style={{ color: colors.text2 }}>Ricetta non trovata</Text>
+        <Text style={{ color: colors.text2 }}>{t('recipe.notFound')}</Text>
         <Pressable onPress={() => router.back()} style={styles.closeFloat}>
-          <Text style={{ color: colors.text }}>Chiudi</Text>
+          <Text style={{ color: colors.text }}>{t('common.close')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -197,13 +199,13 @@ export default function RecipeDetail() {
           <View style={styles.inner}>
             {editMode ? (
               <>
-                <Text style={styles.sectionLabel}>TITOLO</Text>
+                <Text style={styles.sectionLabel}>{t('recipe.titleLabel')}</Text>
                 <TextInput
                   style={styles.editInput}
                   value={draft.titolo}
                   onChangeText={(v) => setDraft((d) => ({ ...d, titolo: v }))}
                   placeholderTextColor={colors.text3}
-                  placeholder="Titolo ricetta"
+                  placeholder={t('recipe.titlePlaceholder')}
                 />
               </>
             ) : (
@@ -216,7 +218,7 @@ export default function RecipeDetail() {
             {!editMode && (
               <View style={styles.servingsCard}>
                 <Text style={styles.servingsLabel}>
-                  {usePortions ? 'PORZIONI' : 'DOSI'}
+                  {usePortions ? t('recipe.portions') : t('recipe.doses')}
                 </Text>
                 {usePortions ? (
                   <View style={styles.stepperRow}>
@@ -257,9 +259,9 @@ export default function RecipeDetail() {
               <>
                 <View style={{ marginBottom: 18 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={styles.progLabel}>IN DISPENSA</Text>
+                    <Text style={styles.progLabel}>{t('recipe.pantry')}</Text>
                     <Text style={[styles.progValue, { color: pct === 100 ? colors.green : colors.accent }]}>
-                      {pct === 100 ? '✓ Tutto pronto!' : `${pct}%`}
+                      {pct === 100 ? t('recipe.allReady') : `${pct}%`}
                     </Text>
                   </View>
                   <View style={styles.progTrack}>
@@ -267,13 +269,13 @@ export default function RecipeDetail() {
                   </View>
                 </View>
                 <View style={styles.hint}>
-                  <Text style={styles.hintText}>💡 Tocca gli ingredienti che hai già in dispensa per depennarli.</Text>
+                  <Text style={styles.hintText}>{t('recipe.hint')}</Text>
                 </View>
               </>
             )}
 
             {/* ── Ingredienti ── */}
-            <Text style={styles.sectionLabel}>INGREDIENTI</Text>
+            <Text style={styles.sectionLabel}>{t('recipe.ingredients')}</Text>
             <View style={{ marginBottom: 24 }}>
               {editMode ? (
                 <>
@@ -283,14 +285,14 @@ export default function RecipeDetail() {
                         style={[styles.editInput, { flex: 2 }]}
                         value={ing.nome}
                         onChangeText={(v) => updateDraftIng(i, 'nome', v)}
-                        placeholder="Ingrediente"
+                        placeholder={t('recipe.ingredientPlaceholder')}
                         placeholderTextColor={colors.text3}
                       />
                       <TextInput
                         style={[styles.editInput, { flex: 1 }]}
                         value={ing.quantita}
                         onChangeText={(v) => updateDraftIng(i, 'quantita', v)}
-                        placeholder="Qtà"
+                        placeholder={t('recipe.qtyPlaceholder')}
                         placeholderTextColor={colors.text3}
                       />
                       <Pressable onPress={() => removeIng(i)} style={styles.editRemoveBtn} hitSlop={8}>
@@ -300,7 +302,7 @@ export default function RecipeDetail() {
                   ))}
                   <Pressable style={styles.addRowBtn} onPress={addIng}>
                     <Ionicons name="add-circle-outline" size={16} color={colors.accent} />
-                    <Text style={styles.addRowText}>Aggiungi ingrediente</Text>
+                    <Text style={styles.addRowText}>{t('recipe.addIngredient')}</Text>
                   </Pressable>
                 </>
               ) : (
@@ -322,7 +324,7 @@ export default function RecipeDetail() {
             </View>
 
             {/* ── Preparazione ── */}
-            <Text style={styles.sectionLabel}>PREPARAZIONE</Text>
+            <Text style={styles.sectionLabel}>{t('recipe.preparation')}</Text>
             <View style={{ marginBottom: 32 }}>
               {editMode ? (
                 <>
@@ -335,7 +337,7 @@ export default function RecipeDetail() {
                         style={[styles.editInput, { flex: 1 }]}
                         value={step}
                         onChangeText={(v) => updateDraftStep(i, v)}
-                        placeholder={`Passo ${i + 1}`}
+                        placeholder={t('recipe.stepPlaceholder', { n: i + 1 })}
                         placeholderTextColor={colors.text3}
                         multiline
                       />
@@ -346,7 +348,7 @@ export default function RecipeDetail() {
                   ))}
                   <Pressable style={styles.addRowBtn} onPress={addStep}>
                     <Ionicons name="add-circle-outline" size={16} color={colors.accent} />
-                    <Text style={styles.addRowText}>Aggiungi passo</Text>
+                    <Text style={styles.addRowText}>{t('recipe.addStep')}</Text>
                   </Pressable>
                 </>
               ) : (
@@ -367,7 +369,7 @@ export default function RecipeDetail() {
                 onPress={() => Linking.openURL(recipe.source_url!)}
               >
                 <Ionicons name="play" size={14} color={colors.text2} />
-                <Text style={styles.videoBtnText}>Guarda il video originale</Text>
+                <Text style={styles.videoBtnText}>{t('recipe.watchVideo')}</Text>
               </Pressable>
             )}
           </View>
@@ -382,7 +384,7 @@ export default function RecipeDetail() {
                   style={[styles.stickyBtn, { flex: 1, backgroundColor: colors.bg3, borderWidth: 1, borderColor: colors.border }]}
                   onPress={cancelEdit}
                 >
-                  <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Annulla</Text>
+                  <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{t('common.cancel')}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.stickyBtn, { flex: 2, backgroundColor: colors.accent }]}
@@ -392,7 +394,7 @@ export default function RecipeDetail() {
                   {updateMut.isPending ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>Salva modifiche</Text>
+                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>{t('common.save')}</Text>
                   )}
                 </Pressable>
               </View>
@@ -408,7 +410,7 @@ export default function RecipeDetail() {
                     color="white"
                   />
                   <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
-                    {inCart ? 'Nella lista spesa ✓' : 'Aggiungi alla spesa'}
+                    {inCart ? t('recipe.inCart') : t('recipe.addToCart')}
                   </Text>
                 </Pressable>
               </Animated.View>

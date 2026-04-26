@@ -1,0 +1,94 @@
+{
+  "common": {
+    "cancel": "Annulla",
+    "save": "Salva modifiche",
+    "close": "Chiudi",
+    "remove": "Rimuovi",
+    "error": "Errore",
+    "delete": "Elimina",
+    "deleteConfirm": "Eliminare ricetta?",
+    "user": "Utente"
+  },
+  "add": {
+    "title": "Aggiungi ricetta",
+    "subtitle": "Incolla un link e l'AI estrae la ricetta per te",
+    "label": "LINK VIDEO",
+    "placeholder": "Link TikTok, Instagram...",
+    "paste": "Incolla",
+    "extract": "Estrai ricetta",
+    "extracting": "Analisi in corso...",
+    "success": "✓ Ricetta salvata nel tuo Vault!",
+    "error": "Impossibile estrarre. Riprova.",
+    "wait": "🤖 Può richiedere 10-30 secondi",
+    "howTitle": "COME FUNZIONA",
+    "step1Label": "Apri il video",
+    "step1Sub": "Trova la ricetta su TikTok, Instagram o altri social",
+    "step2Label": "Copia il link",
+    "step2Sub": "Tocca \"Condividi\" → \"Copia link\"",
+    "step3Label": "Incolla qui",
+    "step3Sub": "Premi Estrai e lascia fare all'AI"
+  },
+  "vault": {
+    "recipes_one": "{{count}} ricetta",
+    "recipes_other": "{{count}} ricette",
+    "empty": {
+      "title": "Il tuo Vault è vuoto",
+      "sub": "Premi + per salvare la prima ricetta da TikTok o Instagram"
+    }
+  },
+  "cart": {
+    "title": "Lista Spesa",
+    "subtitle": "Spunta mentre metti nel carrello",
+    "progress": "PROGRESSO SPESA",
+    "done": "✓ Fatto!",
+    "counter": "{{checked}}/{{total}} ingredienti",
+    "empty": {
+      "title": "Lista vuota",
+      "sub": "Apri una ricetta dal Vault e premi \"Aggiungi alla spesa\""
+    }
+  },
+  "recipe": {
+    "notFound": "Ricetta non trovata",
+    "pantry": "IN DISPENSA",
+    "allReady": "✓ Tutto pronto!",
+    "hint": "💡 Tocca gli ingredienti che hai già in dispensa per depennarli.",
+    "ingredients": "INGREDIENTI",
+    "preparation": "PREPARAZIONE",
+    "portions": "PORZIONI",
+    "doses": "DOSI",
+    "addToCart": "Aggiungi alla spesa",
+    "inCart": "Nella lista spesa ✓",
+    "watchVideo": "Guarda il video originale",
+    "titleLabel": "TITOLO",
+    "addIngredient": "Aggiungi ingrediente",
+    "addStep": "Aggiungi passo",
+    "titlePlaceholder": "Titolo ricetta",
+    "ingredientPlaceholder": "Ingrediente",
+    "qtyPlaceholder": "Qtà",
+    "stepPlaceholder": "Passo {{n}}",
+    "ingredients_one": "{{count}} ingrediente",
+    "ingredients_other": "{{count}} ingredienti"
+  },
+  "settings": {
+    "title": "Profilo",
+    "info": "Informazioni",
+    "privacy": "Privacy & Dati",
+    "tos": "Termini di servizio",
+    "logout": "Esci",
+    "logoutConfirm": "Sei sicuro di voler uscire?",
+    "version": "DispensIA v2.0 · fatto con ❤️ e AI"
+  },
+  "login": {
+    "tagline": "Video → ricette in secondi",
+    "google": "Continua con Google",
+    "apple": "Continua con Apple",
+    "or": "oppure",
+    "emailPlaceholder": "Email",
+    "continueEmail": "Continua con Email",
+    "codePlaceholder": "Codice di verifica",
+    "verifyCode": "Verifica codice",
+    "sentTo": "Ti abbiamo inviato un codice via email a",
+    "changeEmail": "← Cambia email",
+    "errorTitle": "Errore"
+  }
+}

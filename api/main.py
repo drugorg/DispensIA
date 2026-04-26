@@ -52,6 +52,7 @@ client_ai = openai.OpenAI(api_key=OPENAI_KEY)
 class LinkRequest(BaseModel):
     url: str
     user_id: str
+    lang: str = "it"
 
 
 class IngredientUpdate(BaseModel):
@@ -255,28 +256,35 @@ def download_thumbnail_base64(thumb_url: str) -> str:
 # =================================================================
 # 🧠 AI EXTRACTION
 # =================================================================
-SYSTEM_TEXT_ONLY = (
-    "Analizza il testo. Se contiene chiaramente una ricetta con ingredienti e quantità, "
-    'estraila in JSON: {"has_recipe": true, "titolo": "...", '
-    '"porzioni": <numero intero di persone se esplicitamente menzionato altrimenti null>, '
-    '"ingredienti": [{"nome": "...", "quantita": "..."}], "preparazione": ["..."]}. '
-    'Se NON contiene una ricetta o mancano gli ingredienti, restituisci SOLO: {"has_recipe": false}.'
-)
+def _system_text_only(lang: str) -> str:
+    return (
+        f"Analizza il testo. Se contiene chiaramente una ricetta con ingredienti e quantità, "
+        f'estraila in JSON: {{"has_recipe": true, "titolo": "...", '
+        f'"porzioni": <numero intero di persone se esplicitamente menzionato altrimenti null>, '
+        f'"ingredienti": [{{"nome": "...", "quantita": "..."}}], "preparazione": ["..."]}}. '
+        f'Tutti i campi testuali devono essere in lingua "{lang}". '
+        f'Se il contenuto è già in "{lang}" estrailo senza tradurre, altrimenti traducilo in "{lang}". '
+        f'Se NON contiene una ricetta o mancano gli ingredienti, restituisci SOLO: {{"has_recipe": false}}.'
+    )
+
+
+def _system_combined(lang: str) -> str:
+    return (
+        f"Estrai la ricetta in JSON rigoroso: {{titolo, "
+        f"porzioni: <numero intero persone se menzionato esplicitamente altrimenti null>, "
+        f"ingredienti: [{{nome, quantita}}], preparazione: []}}. "
+        f'Tutti i campi testuali devono essere in lingua "{lang}". '
+        f'Se il contenuto è già in "{lang}" estrailo senza tradurre, altrimenti traducilo in "{lang}". '
+        f"Sii conciso e ignora le chiacchiere."
+    )
  
-SYSTEM_COMBINED = (
-    "Estrai ricetta in JSON rigoroso: {titolo, "
-    "porzioni: <numero intero persone se menzionato esplicitamente altrimenti null>, "
-    "ingredienti: [{nome, quantita}], preparazione: []}. "
-    "Sii conciso e ignora le chiacchiere."
-)
  
- 
-def extract_from_text(desc: str) -> dict | None:
+def extract_from_text(desc: str, lang: str = "it") -> dict | None:
     res = client_ai.chat.completions.create(
         model="gpt-4o-mini",
         response_format={"type": "json_object"},
         messages=[
-            {"role": "system", "content": SYSTEM_TEXT_ONLY},
+            {"role": "system", "content": _system_text_only(lang)},
             {"role": "user", "content": desc},
         ],
     )
@@ -287,12 +295,12 @@ def extract_from_text(desc: str) -> dict | None:
     return None
  
  
-def extract_from_text_and_audio(desc: str, transcription: str) -> dict:
+def extract_from_text_and_audio(desc: str, transcription: str, lang: str = "it") -> dict:
     res = client_ai.chat.completions.create(
         model="gpt-4o-mini",
         response_format={"type": "json_object"},
         messages=[
-            {"role": "system", "content": SYSTEM_COMBINED},
+            {"role": "system", "content": _system_combined(lang)},
             {"role": "user", "content": f"Testo: {desc} | Audio: {transcription}"},
         ],
     )
@@ -312,6 +320,7 @@ async def health_check():
 async def extract_recipe(request: LinkRequest):
     clean_url = request.url.split("?")[0].rstrip('/')
     user_id = request.user_id
+    lang = request.lang or "it"
     unique_id = str(ObjectId())
     platform = detect_platform(clean_url)
  
@@ -344,7 +353,7 @@ async def extract_recipe(request: LinkRequest):
  
             # 💡 PIANO A: solo testo
             print(">> PIANO A: analisi testo...", flush=True)
-            parsed = extract_from_text(desc)
+            parsed = extract_from_text(desc, lang)
  
             if parsed:
                 print("🟢 Ricetta trovata nel testo!", flush=True)
@@ -379,11 +388,12 @@ async def extract_recipe(request: LinkRequest):
                     )
  
                 print(">> JSON finale...", flush=True)
-                parsed = extract_from_text_and_audio(desc, transcription.text)
+                parsed = extract_from_text_and_audio(desc, transcription.text, lang)
  
             parsed["source_url"] = clean_url
             parsed["thumbnail"] = thumbnail_b64
             parsed["platform"] = platform
+            parsed["lang"] = lang
             result = await global_recipes.insert_one(parsed)
             recipe_id = result.inserted_id
  

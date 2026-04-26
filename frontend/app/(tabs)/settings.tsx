@@ -1,5 +1,6 @@
 import { useUser, useClerk } from '@clerk/clerk-expo';
 import { Image } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable, StyleSheet, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,13 +9,20 @@ import { colors } from '../../lib/theme';
 export default function SettingsScreen() {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { t } = useTranslation();
 
   const handleSignOut = () => {
-    Alert.alert('Logout', 'Sei sicuro di voler uscire?', [
-      { text: 'Annulla', style: 'cancel' },
-      { text: 'Esci', style: 'destructive', onPress: () => signOut() },
+    Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.logout'), style: 'destructive', onPress: () => signOut() },
     ]);
   };
+
+  const menuItems = [
+    { icon: 'information-circle-outline', label: t('settings.info') },
+    { icon: 'shield-checkmark-outline', label: t('settings.privacy') },
+    { icon: 'document-text-outline', label: t('settings.tos') },
+  ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -25,7 +33,7 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.titleWrap}>
-        <Text style={styles.title}>Profilo</Text>
+        <Text style={styles.title}>{t('settings.title')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 40 }}>
@@ -41,19 +49,15 @@ export default function SettingsScreen() {
               </View>
             )}
             <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{user?.fullName || user?.firstName || 'Utente'}</Text>
+              <Text style={styles.name}>{user?.fullName || user?.firstName || t('common.user')}</Text>
               <Text style={styles.email}>{user?.primaryEmailAddress?.emailAddress}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.card}>
-          {[
-            { icon: 'information-circle-outline', label: 'Informazioni' },
-            { icon: 'shield-checkmark-outline', label: 'Privacy & Dati' },
-            { icon: 'document-text-outline', label: 'Termini di servizio' },
-          ].map((item, i) => (
-            <Pressable key={i} style={[styles.row, i < 2 && styles.rowBorder]}>
+          {menuItems.map((item, i) => (
+            <Pressable key={i} style={[styles.row, i < menuItems.length - 1 && styles.rowBorder]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <Ionicons name={item.icon as any} size={20} color={colors.text2} />
                 <Text style={styles.rowLabel}>{item.label}</Text>
@@ -64,10 +68,10 @@ export default function SettingsScreen() {
         </View>
 
         <Pressable style={[styles.card, { padding: 16, alignItems: 'center' }]} onPress={handleSignOut}>
-          <Text style={{ color: colors.red, fontWeight: '700', fontSize: 15 }}>Esci</Text>
+          <Text style={{ color: colors.red, fontWeight: '700', fontSize: 15 }}>{t('settings.logout')}</Text>
         </Pressable>
 
-        <Text style={styles.version}>DispensIA v2.0 · fatto con ❤️ e AI</Text>
+        <Text style={styles.version}>{t('settings.version')}</Text>
       </ScrollView>
     </SafeAreaView>
   );

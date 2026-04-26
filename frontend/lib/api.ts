@@ -22,11 +22,11 @@ export async function fetchRecipes(userId: string): Promise<Recipe[]> {
   return res.json();
 }
 
-export async function extractRecipe(url: string, userId: string) {
+export async function extractRecipe(url: string, userId: string, lang = 'it') {
   const res = await fetch(`${API_BASE}/extract`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, user_id: userId }),
+    body: JSON.stringify({ url, user_id: userId, lang }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -17,7 +18,6 @@ import Animated, {
   useAnimatedStyle,
   withRepeat,
   withTiming,
-  withSequence,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,6 +45,7 @@ function SkeletonCard() {
 export default function VaultScreen() {
   const { user } = useUser();
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const { remove, isInCart } = useCartStore();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -64,9 +65,9 @@ export default function VaultScreen() {
   });
 
   const handleDelete = (id: string, title: string) => {
-    Alert.alert('Eliminare ricetta?', title, [
-      { text: 'Annulla', style: 'cancel' },
-      { text: 'Elimina', style: 'destructive', onPress: () => delMut.mutate({ id }) },
+    Alert.alert(t('common.deleteConfirm'), title, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => delMut.mutate({ id }) },
     ]);
   };
 
@@ -91,20 +92,19 @@ export default function VaultScreen() {
             <Text style={{ fontSize: 32 }}>🍽️</Text>
           </View>
         )}
-
         {inCart && (
           <View style={styles.cartBadge}>
             <Ionicons name="bag-check" size={12} color="white" />
           </View>
         )}
-
         <View style={styles.cardBody}>
           <Text style={styles.cardTitle} numberOfLines={2}>{item.titolo}</Text>
           {(item.ingredienti?.length ?? 0) > 0 && (
-            <Text style={styles.cardMeta}>{item.ingredienti.length} ingredienti</Text>
+            <Text style={styles.cardMeta}>
+              {t('recipe.ingredients', { count: item.ingredienti.length })}
+            </Text>
           )}
         </View>
-
         <Pressable
           style={styles.deleteBadge}
           onPress={(e) => { e.stopPropagation?.(); handleDelete(item._id, item.titolo); }}
@@ -123,7 +123,9 @@ export default function VaultScreen() {
           Dispens<Text style={{ color: colors.accent }}>IA</Text>
         </Text>
         <View style={styles.pill}>
-          <Text style={styles.pillText}>{recipes.length} ricette</Text>
+          <Text style={styles.pillText}>
+            {t('vault.recipes', { count: recipes.length })}
+          </Text>
         </View>
       </View>
 
@@ -140,8 +142,8 @@ export default function VaultScreen() {
       ) : recipes.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🍲</Text>
-          <Text style={styles.emptyTitle}>Il tuo Vault è vuoto</Text>
-          <Text style={styles.emptySub}>Premi + per salvare la prima ricetta da TikTok o Instagram</Text>
+          <Text style={styles.emptyTitle}>{t('vault.empty.title')}</Text>
+          <Text style={styles.emptySub}>{t('vault.empty.sub')}</Text>
         </View>
       ) : (
         <FlatList

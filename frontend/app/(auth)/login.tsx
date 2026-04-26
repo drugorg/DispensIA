@@ -1,5 +1,6 @@
 import { useSignIn, useSSO } from '@clerk/clerk-expo';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
@@ -11,6 +12,7 @@ WebBrowser.maybeCompleteAuthSession();
 export default function LoginScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startSSOFlow } = useSSO();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [pendingVerification, setPendingVerification] = useState(false);
@@ -22,11 +24,11 @@ export default function LoginScreen() {
     try {
       const { supportedFirstFactors } = await signIn.create({ identifier: email });
       const factor = supportedFirstFactors?.find((f: any) => f.strategy === 'email_code');
-      if (!factor) throw new Error('Email code non supportato');
+      if (!factor) throw new Error('Email code not supported');
       await signIn.prepareFirstFactor({ strategy: 'email_code', emailAddressId: (factor as any).emailAddressId });
       setPendingVerification(true);
     } catch (err: any) {
-      Alert.alert('Errore', err.errors?.[0]?.message || 'Impossibile inviare il codice');
+      Alert.alert(t('login.errorTitle'), err.errors?.[0]?.message || err.message);
     } finally {
       setLoading(false);
     }
@@ -41,7 +43,7 @@ export default function LoginScreen() {
         await setActive({ session: res.createdSessionId });
       }
     } catch (err: any) {
-      Alert.alert('Errore', err.errors?.[0]?.message || 'Codice non valido');
+      Alert.alert(t('login.errorTitle'), err.errors?.[0]?.message || err.message);
     } finally {
       setLoading(false);
     }
@@ -54,7 +56,7 @@ export default function LoginScreen() {
         await setActive!({ session: createdSessionId });
       }
     } catch (err: any) {
-      Alert.alert('Errore', err.message || 'Login fallito');
+      Alert.alert(t('login.errorTitle'), err.message);
     }
   };
 
@@ -65,30 +67,30 @@ export default function LoginScreen() {
           <Text style={styles.logo}>
             Dispens<Text style={styles.logoAccent}>IA</Text>
           </Text>
-          <Text style={styles.tagline}>Video TikTok → ricette in secondi</Text>
+          <Text style={styles.tagline}>{t('login.tagline')}</Text>
         </View>
 
         {!pendingVerification ? (
           <View style={styles.form}>
             <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => onOAuth('oauth_google')}>
               <Ionicons name="logo-google" size={18} color={colors.text} />
-              <Text style={styles.btnGhostText}>Continua con Google</Text>
+              <Text style={styles.btnGhostText}>{t('login.google')}</Text>
             </Pressable>
 
             <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => onOAuth('oauth_apple')}>
               <Ionicons name="logo-apple" size={18} color={colors.text} />
-              <Text style={styles.btnGhostText}>Continua con Apple</Text>
+              <Text style={styles.btnGhostText}>{t('login.apple')}</Text>
             </Pressable>
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>oppure</Text>
+              <Text style={styles.dividerText}>{t('login.or')}</Text>
               <View style={styles.dividerLine} />
             </View>
 
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder={t('login.emailPlaceholder')}
               placeholderTextColor={colors.text3}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -104,19 +106,19 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.btnPrimaryText}>Continua con Email</Text>
+                <Text style={styles.btnPrimaryText}>{t('login.continueEmail')}</Text>
               )}
             </Pressable>
           </View>
         ) : (
           <View style={styles.form}>
             <Text style={styles.verifyText}>
-              Ti abbiamo inviato un codice via email a{'\n'}
+              {t('login.sentTo')}{'\n'}
               <Text style={{ fontWeight: '600', color: colors.text }}>{email}</Text>
             </Text>
             <TextInput
               style={styles.input}
-              placeholder="Codice di verifica"
+              placeholder={t('login.codePlaceholder')}
               placeholderTextColor={colors.text3}
               keyboardType="number-pad"
               value={code}
@@ -130,11 +132,11 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.btnPrimaryText}>Verifica codice</Text>
+                <Text style={styles.btnPrimaryText}>{t('login.verifyCode')}</Text>
               )}
             </Pressable>
             <Pressable onPress={() => setPendingVerification(false)}>
-              <Text style={styles.backLink}>← Cambia email</Text>
+              <Text style={styles.backLink}>{t('login.changeEmail')}</Text>
             </Pressable>
           </View>
         )}

@@ -3,15 +3,17 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchRecipes, Recipe } from '../../lib/api';
+import { fetchRecipes } from '../../lib/api';
 import { useCartStore } from '../../lib/cartStore';
 import { colors } from '../../lib/theme';
 
 export default function CartScreen() {
   const { user } = useUser();
+  const { t } = useTranslation();
   const { cartIds, toggle } = useCartStore();
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
@@ -36,30 +38,32 @@ export default function CartScreen() {
         </Text>
         {recipes.length > 0 && (
           <View style={styles.pill}>
-            <Text style={styles.pillText}>{checkedCount}/{totalItems} ingredienti</Text>
+            <Text style={styles.pillText}>
+              {t('cart.counter', { checked: checkedCount, total: totalItems })}
+            </Text>
           </View>
         )}
       </View>
 
       <View style={styles.titleWrap}>
-        <Text style={styles.title}>Lista Spesa</Text>
-        <Text style={styles.subtitle}>Spunta mentre metti nel carrello</Text>
+        <Text style={styles.title}>{t('cart.title')}</Text>
+        <Text style={styles.subtitle}>{t('cart.subtitle')}</Text>
       </View>
 
       {recipes.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🛒</Text>
-          <Text style={styles.emptyTitle}>Lista vuota</Text>
-          <Text style={styles.emptySub}>Apri una ricetta dal Vault e premi "Aggiungi alla spesa"</Text>
+          <Text style={styles.emptyTitle}>{t('cart.empty.title')}</Text>
+          <Text style={styles.emptySub}>{t('cart.empty.sub')}</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}>
           {totalItems > 0 && (
             <View style={[styles.card, { padding: 14 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Text style={styles.progLabel}>PROGRESSO SPESA</Text>
+                <Text style={styles.progLabel}>{t('cart.progress')}</Text>
                 <Text style={[styles.progValue, { color: pct === 100 ? colors.green : colors.accent }]}>
-                  {pct === 100 ? '✓ Fatto!' : `${pct}%`}
+                  {pct === 100 ? t('cart.done') : `${pct}%`}
                 </Text>
               </View>
               <View style={styles.progTrack}>
@@ -81,7 +85,7 @@ export default function CartScreen() {
                   <Text style={styles.rTitle}>{r.titolo}</Text>
                 </Pressable>
                 <Pressable onPress={() => toggle(r._id)} style={styles.removeBtn}>
-                  <Text style={styles.removeText}>Rimuovi</Text>
+                  <Text style={styles.removeText}>{t('common.remove')}</Text>
                 </Pressable>
               </View>
 

@@ -1,0 +1,94 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save changes",
+    "close": "Close",
+    "remove": "Remove",
+    "error": "Error",
+    "delete": "Delete",
+    "deleteConfirm": "Delete recipe?",
+    "user": "User"
+  },
+  "add": {
+    "title": "Add recipe",
+    "subtitle": "Paste a link and the AI extracts the recipe for you",
+    "label": "VIDEO LINK",
+    "placeholder": "TikTok, Instagram link...",
+    "paste": "Paste",
+    "extract": "Extract recipe",
+    "extracting": "Analysing...",
+    "success": "✓ Recipe saved to your Vault!",
+    "error": "Could not extract the recipe. Please try again.",
+    "wait": "🤖 This may take 10-30 seconds",
+    "howTitle": "HOW IT WORKS",
+    "step1Label": "Open the video",
+    "step1Sub": "Find a recipe on TikTok, Instagram or other social media",
+    "step2Label": "Copy the link",
+    "step2Sub": "Tap \"Share\" → \"Copy link\"",
+    "step3Label": "Paste here",
+    "step3Sub": "Press Extract and let the AI do the rest"
+  },
+  "vault": {
+    "recipes_one": "{{count}} recipe",
+    "recipes_other": "{{count}} recipes",
+    "empty": {
+      "title": "Your Vault is empty",
+      "sub": "Tap + to save your first recipe from TikTok or Instagram"
+    }
+  },
+  "cart": {
+    "title": "Shopping List",
+    "subtitle": "Check items as you shop",
+    "progress": "SHOPPING PROGRESS",
+    "done": "✓ All done!",
+    "counter": "{{checked}}/{{total}} items",
+    "empty": {
+      "title": "List is empty",
+      "sub": "Open a recipe from the Vault and tap \"Add to shopping list\""
+    }
+  },
+  "recipe": {
+    "notFound": "Recipe not found",
+    "pantry": "IN PANTRY",
+    "allReady": "✓ All ready!",
+    "hint": "💡 Tap ingredients you already have to cross them off.",
+    "ingredients": "INGREDIENTS",
+    "preparation": "PREPARATION",
+    "portions": "SERVINGS",
+    "doses": "SCALE",
+    "addToCart": "Add to shopping list",
+    "inCart": "In shopping list ✓",
+    "watchVideo": "Watch original video",
+    "titleLabel": "TITLE",
+    "addIngredient": "Add ingredient",
+    "addStep": "Add step",
+    "titlePlaceholder": "Recipe title",
+    "ingredientPlaceholder": "Ingredient",
+    "qtyPlaceholder": "Qty",
+    "stepPlaceholder": "Step {{n}}",
+    "ingredients_one": "{{count}} ingredient",
+    "ingredients_other": "{{count}} ingredients"
+  },
+  "settings": {
+    "title": "Profile",
+    "info": "Information",
+    "privacy": "Privacy & Data",
+    "tos": "Terms of service",
+    "logout": "Sign out",
+    "logoutConfirm": "Are you sure you want to sign out?",
+    "version": "DispensIA v2.0 · made with ❤️ and AI"
+  },
+  "login": {
+    "tagline": "Videos → recipes in seconds",
+    "google": "Continue with Google",
+    "apple": "Continue with Apple",
+    "or": "or",
+    "emailPlaceholder": "Email",
+    "continueEmail": "Continue with Email",
+    "codePlaceholder": "Verification code",
+    "verifyCode": "Verify code",
+    "sentTo": "We sent a code to your email address",
+    "changeEmail": "← Change email",
+    "errorTitle": "Error"
+  }
+}
