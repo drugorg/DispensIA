@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { NativeModules, Platform } from 'react-native';
 
 import it from '../locales/it.json';
 import en from '../locales/en.json';
@@ -7,7 +8,18 @@ import en from '../locales/en.json';
 const SUPPORTED = ['it', 'en'];
 
 function deviceLang(): string {
-  const code = (navigator?.language ?? 'en').split('-')[0].split('_')[0];
+  let raw = 'en';
+  try {
+    if (Platform.OS === 'ios') {
+      const settings = NativeModules.SettingsManager?.settings ?? {};
+      raw = settings.AppleLocale || settings.AppleLanguages?.[0] || 'en';
+    } else {
+      raw = NativeModules.I18nManager?.localeIdentifier ?? 'en';
+    }
+  } catch {
+    raw = 'en';
+  }
+  const code = raw.split(/[-_]/)[0];
   return SUPPORTED.includes(code) ? code : 'en';
 }
 

@@ -348,7 +348,7 @@ async def extract_recipe(request: LinkRequest):
     try:
         print(f"\n--- DISPENSIA [{platform.upper()}] {clean_url} ---", flush=True)
  
-        existing = await global_recipes.find_one({"source_url": clean_url})
+        existing = await global_recipes.find_one({"source_url": clean_url, "lang": lang})
         if existing:
             print("🟢 già in database", flush=True)
             recipe_id = existing["_id"]
@@ -396,7 +396,6 @@ async def extract_recipe(request: LinkRequest):
                     transcription = client_ai.audio.transcriptions.create(
                         model="whisper-1",
                         file=("audio.mp3", f, "audio/mpeg"),
-                        language="it",
                     )
  
                 print(">> JSON finale...", flush=True)
