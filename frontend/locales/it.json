@@ -67,7 +67,8 @@
     "qtyPlaceholder": "Qtà",
     "stepPlaceholder": "Passo {{n}}",
     "ingredients_one": "{{count}} ingrediente",
-    "ingredients_other": "{{count}} ingredienti"
+    "ingredients_other": "{{count}} ingredienti",
+    "qb": "q.b."
   },
   "settings": {
     "title": "Profilo",

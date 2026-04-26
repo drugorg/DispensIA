@@ -256,25 +256,37 @@ def download_thumbnail_base64(thumb_url: str) -> str:
 # =================================================================
 # 🧠 AI EXTRACTION
 # =================================================================
+_LANG_RULE = (
+    "REGOLA LINGUA (OBBLIGATORIA, SENZA ECCEZIONI): "
+    "Ogni singolo campo testuale dell'output JSON — titolo, ingredienti[].nome, "
+    "ingredienti[].quantita (la parte testuale), ogni elemento di preparazione[] — "
+    "DEVE essere scritto ESCLUSIVAMENTE in lingua \"{lang}\". "
+    "Mescolare lingue diverse nel JSON è assolutamente vietato. "
+    "Se il contenuto del video è in un'altra lingua, traduci TUTTO in \"{lang}\" senza eccezioni. "
+    "Se il contenuto è già in \"{lang}\", mantienilo in \"{lang}\". "
+    "Non lasciare mai nessun campo in una lingua diversa da \"{lang}\"."
+)
+
+
 def _system_text_only(lang: str) -> str:
+    lang_rule = _LANG_RULE.replace('"{lang}"', f'"{lang}"')
     return (
         f"Analizza il testo. Se contiene chiaramente una ricetta con ingredienti e quantità, "
         f'estraila in JSON: {{"has_recipe": true, "titolo": "...", '
         f'"porzioni": <numero intero di persone se esplicitamente menzionato altrimenti null>, '
         f'"ingredienti": [{{"nome": "...", "quantita": "..."}}], "preparazione": ["..."]}}. '
-        f'Tutti i campi testuali devono essere in lingua "{lang}". '
-        f'Se il contenuto è già in "{lang}" estrailo senza tradurre, altrimenti traducilo in "{lang}". '
+        f'{lang_rule} '
         f'Se NON contiene una ricetta o mancano gli ingredienti, restituisci SOLO: {{"has_recipe": false}}.'
     )
 
 
 def _system_combined(lang: str) -> str:
+    lang_rule = _LANG_RULE.replace('"{lang}"', f'"{lang}"')
     return (
         f"Estrai la ricetta in JSON rigoroso: {{titolo, "
         f"porzioni: <numero intero persone se menzionato esplicitamente altrimenti null>, "
         f"ingredienti: [{{nome, quantita}}], preparazione: []}}. "
-        f'Tutti i campi testuali devono essere in lingua "{lang}". '
-        f'Se il contenuto è già in "{lang}" estrailo senza tradurre, altrimenti traducilo in "{lang}". '
+        f'{lang_rule} '
         f"Sii conciso e ignora le chiacchiere."
     )
  

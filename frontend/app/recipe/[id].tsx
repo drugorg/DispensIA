@@ -316,7 +316,7 @@ export default function RecipeDetail() {
                       {ing.nome}
                     </Text>
                     <Text style={[styles.ingQty, checked.includes(i) && styles.ingDone]}>
-                      {scaleQty(ing.quantita, mult)}
+                      {ing.quantita ? scaleQty(ing.quantita, mult) : t('recipe.qb')}
                     </Text>
                   </Pressable>
                 ))

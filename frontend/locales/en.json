@@ -67,7 +67,8 @@
     "qtyPlaceholder": "Qty",
     "stepPlaceholder": "Step {{n}}",
     "ingredients_one": "{{count}} ingredient",
-    "ingredients_other": "{{count}} ingredients"
+    "ingredients_other": "{{count}} ingredients",
+    "qb": "to taste"
   },
   "settings": {
     "title": "Profile",
