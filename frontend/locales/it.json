@@ -1,4 +1,10 @@
 {
+  "tabs": {
+    "vault": "Vault",
+    "add": "Aggiungi",
+    "cart": "Spesa",
+    "profile": "Profilo"
+  },
   "common": {
     "cancel": "Annulla",
     "save": "Salva modifiche",

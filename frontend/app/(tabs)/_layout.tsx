@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { colors } from '../../lib/theme';
 import { useCartStore } from '../../lib/cartStore';
@@ -32,6 +33,7 @@ function CartIcon({ color, size }: { color: string; size: number }) {
 }
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
@@ -52,14 +54,14 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Vault',
+          title: t('tabs.vault'),
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="add"
         options={{
-          title: 'Aggiungi',
+          title: t('tabs.add'),
           tabBarIcon: ({ color }) => (
             <View
               style={{
@@ -81,14 +83,14 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'Spesa',
+          title: t('tabs.cart'),
           tabBarIcon: CartIcon,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Profilo',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />

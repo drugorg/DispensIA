@@ -1,4 +1,10 @@
 {
+  "tabs": {
+    "vault": "Vault",
+    "add": "Add",
+    "cart": "Shopping",
+    "profile": "Profile"
+  },
   "common": {
     "cancel": "Cancel",
     "save": "Save changes",

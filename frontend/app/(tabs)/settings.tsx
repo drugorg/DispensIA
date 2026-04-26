@@ -1,5 +1,6 @@
 import { useUser, useClerk } from '@clerk/clerk-expo';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable, StyleSheet, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,9 +20,9 @@ export default function SettingsScreen() {
   };
 
   const menuItems = [
-    { icon: 'information-circle-outline', label: t('settings.info') },
-    { icon: 'shield-checkmark-outline', label: t('settings.privacy') },
-    { icon: 'document-text-outline', label: t('settings.tos') },
+    { icon: 'information-circle-outline', label: t('settings.info'), page: 'info' },
+    { icon: 'shield-checkmark-outline', label: t('settings.privacy'), page: 'privacy' },
+    { icon: 'document-text-outline', label: t('settings.tos'), page: 'tos' },
   ];
 
   return (
@@ -57,7 +58,11 @@ export default function SettingsScreen() {
 
         <View style={styles.card}>
           {menuItems.map((item, i) => (
-            <Pressable key={i} style={[styles.row, i < menuItems.length - 1 && styles.rowBorder]}>
+            <Pressable
+              key={i}
+              style={[styles.row, i < menuItems.length - 1 && styles.rowBorder]}
+              onPress={() => router.push({ pathname: '/legal', params: { page: item.page } } as any)}
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <Ionicons name={item.icon as any} size={20} color={colors.text2} />
                 <Text style={styles.rowLabel}>{item.label}</Text>
