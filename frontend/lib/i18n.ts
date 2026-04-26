@@ -1,6 +1,5 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { getLocales } from 'expo-localization';
 
 import it from '../locales/it.json';
 import en from '../locales/en.json';
@@ -8,7 +7,7 @@ import en from '../locales/en.json';
 const SUPPORTED = ['it', 'en'];
 
 function deviceLang(): string {
-  const code = getLocales()[0]?.languageCode ?? 'en';
+  const code = (navigator?.language ?? 'en').split('-')[0].split('_')[0];
   return SUPPORTED.includes(code) ? code : 'en';
 }
 
