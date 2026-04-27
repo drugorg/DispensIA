@@ -18,17 +18,7 @@ from bson import ObjectId
 from dotenv import load_dotenv
  
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
- 
-app = FastAPI(lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
- 
 # =================================================================
 # 🟢 CONFIGURAZIONE
 # =================================================================
@@ -36,13 +26,13 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMP_DIR = os.path.join(BASE_DIR, "temp")
 if not os.path.exists(TEMP_DIR):
     os.makedirs(TEMP_DIR)
- 
+
 MONGO_DETAILS = os.getenv("MONGO_URL")
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
- 
+
 if not MONGO_DETAILS or not OPENAI_KEY:
     print("🚨 ERRORE: Chiavi API non trovate!")
- 
+
 client_db = AsyncIOMotorClient(MONGO_DETAILS)
 db = client_db.ClipKitDB
 global_recipes = db.global_recipes
@@ -56,8 +46,19 @@ client_ai = openai.OpenAI(api_key=OPENAI_KEY)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await usage.create_index("created_at", expireAfterSeconds=172800)  # auto-delete after 48h
+    await usage.create_index("created_at", expireAfterSeconds=172800)
     yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
  
  
 class LinkRequest(BaseModel):
