@@ -10,7 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dispensia.app"
+      "bundleIdentifier": "com.dispensia.app",
+      "icon": {
+        "light": "./assets/images/icon.png",
+        "dark": "./assets/images/icon-dark.png",
+        "tinted": "./assets/images/icon-dark.png"
+      }
     },
     "android": {
       "package": "com.dispensia.app",
