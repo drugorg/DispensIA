@@ -51,7 +51,7 @@ const CONTENT: Record<string, Record<string, PageContent>> = {
         },
         {
           heading: 'I tuoi diritti (GDPR)',
-          body: 'Hai diritto di accedere, modificare o cancellare in qualsiasi momento i dati associati al tuo account. Per esercitare questi diritti scrivi a: privacy@dispensia.app',
+          body: 'Hai diritto di accedere, modificare o cancellare in qualsiasi momento i dati associati al tuo account. Per esercitare questi diritti scrivi a: info@dispensia.app',
         },
         {
           heading: 'Sicurezza',
@@ -139,7 +139,7 @@ const CONTENT: Record<string, Record<string, PageContent>> = {
         },
         {
           heading: 'Your rights (GDPR)',
-          body: 'You have the right to access, modify or delete your account data at any time. To exercise these rights write to: privacy@dispensia.app',
+          body: 'You have the right to access, modify or delete your account data at any time. To exercise these rights write to: info@dispensia.app',
         },
         {
           heading: 'Security',

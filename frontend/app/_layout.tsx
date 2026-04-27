@@ -1,5 +1,5 @@
 import '../lib/i18n';
-import { ClerkProvider, ClerkLoaded, useAuth } from '@clerk/clerk-expo';
+import { ClerkProvider, ClerkLoaded, ClerkLoading, useAuth } from '@clerk/clerk-expo';
 import { tokenCache } from '@clerk/clerk-expo/token-cache';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -12,6 +12,15 @@ import { colors } from '../lib/theme';
 const queryClient = new QueryClient();
 const CLERK_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
   ?? 'pk_test_cGxlYXNhbnQtY2hpcG11bmstMzQuY2xlcmsuYWNjb3VudHMuZGV2JA';
+
+if (__DEV__) {
+  const originalError = console.error;
+  console.error = (...args: any[]) => {
+    const msg = args[0]?.toString?.() ?? '';
+    if (msg.includes('clerk') || msg.includes('Clerk')) return;
+    originalError(...args);
+  };
+}
 
 function AuthGate() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -39,6 +48,11 @@ export default function RootLayout() {
   return (
     <ShareIntentProvider>
     <ClerkProvider tokenCache={tokenCache} publishableKey={CLERK_KEY}>
+      <ClerkLoading>
+        <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={colors.accent} />
+        </View>
+      </ClerkLoading>
       <ClerkLoaded>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="light" />

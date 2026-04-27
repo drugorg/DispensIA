@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/theme';
 
@@ -51,7 +52,8 @@ export default function LoginScreen() {
 
   const onOAuth = async (strategy: 'oauth_google' | 'oauth_apple') => {
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({ strategy });
+      const redirectUrl = Linking.createURL('/sso-callback');
+      const { createdSessionId, setActive } = await startSSOFlow({ strategy, redirectUrl });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId });
       }
