@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -17,8 +19,8 @@ from dotenv import load_dotenv
  
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
  
-app = FastAPI()
- 
+app = FastAPI(lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -45,8 +47,17 @@ client_db = AsyncIOMotorClient(MONGO_DETAILS)
 db = client_db.ClipKitDB
 global_recipes = db.global_recipes
 user_vaults = db.user_vaults
- 
+usage = db.usage
+
+DAILY_LIMIT = int(os.getenv("DAILY_EXTRACT_LIMIT", "10"))
+
 client_ai = openai.OpenAI(api_key=OPENAI_KEY)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await usage.create_index("created_at", expireAfterSeconds=172800)  # auto-delete after 48h
+    yield
  
  
 class LinkRequest(BaseModel):
@@ -341,6 +352,31 @@ def extract_from_text_and_audio(desc: str, transcription: str, lang: str = "it")
  
  
 # =================================================================
+# 🛡️ RATE LIMITING
+# =================================================================
+_RATE_LIMIT_MSG = {
+    "it": "Hai raggiunto il limite di {n} estrazioni al giorno. Riprova domani.",
+    "en": "You have reached the daily limit of {n} extractions. Try again tomorrow.",
+}
+
+async def check_rate_limit(user_id: str, lang: str) -> None:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    doc = await usage.find_one({"user_id": user_id, "date": today})
+    count = (doc or {}).get("count", 0)
+    if count >= DAILY_LIMIT:
+        msg = _RATE_LIMIT_MSG.get(lang, _RATE_LIMIT_MSG["en"]).format(n=DAILY_LIMIT)
+        raise HTTPException(status_code=429, detail=msg)
+    await usage.update_one(
+        {"user_id": user_id, "date": today},
+        {
+            "$inc": {"count": 1},
+            "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
+        },
+        upsert=True,
+    )
+
+
+# =================================================================
 # 🟢 ROTTE API
 # =================================================================
  
@@ -374,6 +410,7 @@ async def extract_recipe(request: LinkRequest):
             print("🟢 già in database", flush=True)
             recipe_id = existing["_id"]
         else:
+            await check_rate_limit(user_id, lang)
             print("🔴 Nuova clip. Recupero metadati...", flush=True)
             metadata = get_content_metadata(clean_url)
             video_url = metadata['video_url']
