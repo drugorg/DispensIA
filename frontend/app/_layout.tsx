@@ -10,7 +10,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { colors } from '../lib/theme';
 
 const queryClient = new QueryClient();
-const CLERK_KEY = 'pk_test_cGxlYXNhbnQtY2hpcG11bmstMzQuY2xlcmsuYWNjb3VudHMuZGV2JA';
+const CLERK_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
 function AuthGate() {
   const { isLoaded, isSignedIn } = useAuth();
