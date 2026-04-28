@@ -7,6 +7,8 @@ __pycache__/
 *.jpg
 *.jpeg
 *.png
+!frontend/assets/images/*.png
+!landing/favicon.png
 api/tiktok_cookies.txt
 .env
 .DS_Storenode_modules/
