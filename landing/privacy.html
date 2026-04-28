@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — DispensIA</title>
+  <meta name="description" content="Informativa sulla privacy di DispensIA.">
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0d0d0f;
+      --bg2:    #141416;
+      --border: rgba(255,255,255,0.07);
+      --accent: #ff6b35;
+      --text:   #f0f0f2;
+      --text2:  #8a8a96;
+      --text3:  #4a4a56;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(13,13,15,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+    }
+
+    .nav-logo {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-logo span { color: var(--accent); }
+
+    .nav-back {
+      font-size: 13px;
+      color: var(--text2);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--text); }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 60px 40px 100px;
+    }
+
+    .page-label {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 40px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+    .updated {
+      font-size: 13px;
+      color: var(--text3);
+      margin-bottom: 48px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section:last-child {
+      border-bottom: none;
+    }
+
+    h2 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    p {
+      font-size: 15px;
+      color: var(--text2);
+      line-height: 1.75;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 40px;
+      text-align: center;
+    }
+    footer p {
+      font-size: 13px;
+      color: var(--text3);
+    }
+
+    @media (max-width: 600px) {
+      nav { padding: 16px 20px; }
+      main { padding: 40px 20px 80px; }
+      h1 { font-size: 30px; }
+      footer { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">
+      <img src="favicon.png" alt="" style="width:26px;height:26px;border-radius:6px;">
+      <span style="color:var(--text)">Dispens<span>IA</span></span>
+    </a>
+    <a href="/" class="nav-back">← Torna alla home</a>
+  </nav>
+
+  <main>
+    <div class="page-label">Informativa legale</div>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Ultimo aggiornamento: aprile 2025</p>
+
+    <div class="section">
+      <h2>Cosa raccogliamo</h2>
+      <p>Raccogliamo il tuo indirizzo email (per l'autenticazione), i link ai video che condividi e le ricette estratte dall'AI. Non raccogliamo dati di navigazione, informazioni di pagamento o dati sensibili.</p>
+    </div>
+
+    <div class="section">
+      <h2>Come usiamo i tuoi dati</h2>
+      <p>I tuoi dati vengono usati esclusivamente per fornire il servizio. Non vendiamo, condividiamo o cediamo i tuoi dati a terze parti per scopi commerciali.</p>
+    </div>
+
+    <div class="section">
+      <h2>Servizi di terze parti</h2>
+      <p>
+        • <strong style="color:var(--text)">Clerk</strong> — autenticazione sicura (SOC 2 Type II)<br><br>
+        • <strong style="color:var(--text)">OpenAI</strong> — estrazione AI delle ricette. I file audio non vengono archiviati dopo l'elaborazione.<br><br>
+        • <strong style="color:var(--text)">MongoDB Atlas</strong> — archiviazione sicura dei dati in Europa.<br><br>
+        • <strong style="color:var(--text)">Google Play / Apple App Store</strong> — gestione degli abbonamenti in-app.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>I tuoi diritti (GDPR)</h2>
+      <p>Hai diritto di accedere, modificare o cancellare in qualsiasi momento i dati associati al tuo account. Per esercitare questi diritti scrivi a: <a href="mailto:info@dispensia.app">info@dispensia.app</a></p>
+    </div>
+
+    <div class="section">
+      <h2>Sicurezza</h2>
+      <p>Tutte le comunicazioni avvengono tramite HTTPS. Le credenziali di autenticazione sono gestite da Clerk, certificato SOC 2 Type II.</p>
+    </div>
+
+    <div class="section">
+      <h2>Conservazione dei dati</h2>
+      <p>I dati vengono conservati finché l'account è attivo. In caso di cancellazione dell'account, tutti i dati personali vengono eliminati entro 30 giorni.</p>
+    </div>
+
+    <div class="section">
+      <h2>Aggiornamenti</h2>
+      <p>Questa informativa può essere aggiornata. Le modifiche significative saranno notificate tramite l'app o via email.</p>
+    </div>
+
+    <div class="section">
+      <h2>Contatti</h2>
+      <p>Per qualsiasi domanda sulla privacy: <a href="mailto:info@dispensia.app">info@dispensia.app</a></p>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2025 DispensIA · Francesco Rinaldi</p>
+  </footer>
+
+</body>
+</html>
