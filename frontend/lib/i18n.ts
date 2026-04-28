@@ -1,6 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { NativeModules, Platform } from 'react-native';
+import { getLocales } from 'expo-localization';
 
 import it from '../locales/it.json';
 import en from '../locales/en.json';
@@ -8,18 +8,7 @@ import en from '../locales/en.json';
 const SUPPORTED = ['it', 'en'];
 
 function deviceLang(): string {
-  let raw = 'en';
-  try {
-    if (Platform.OS === 'ios') {
-      const settings = NativeModules.SettingsManager?.settings ?? {};
-      raw = settings.AppleLocale || settings.AppleLanguages?.[0] || 'en';
-    } else {
-      raw = NativeModules.I18nManager?.localeIdentifier ?? 'en';
-    }
-  } catch {
-    raw = 'en';
-  }
-  const code = raw.split(/[-_]/)[0];
+  const code = getLocales()[0]?.languageCode ?? 'en';
   return SUPPORTED.includes(code) ? code : 'en';
 }
 

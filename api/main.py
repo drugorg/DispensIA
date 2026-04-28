@@ -315,6 +315,9 @@ def _system_combined(lang: str) -> str:
 
 def _normalize_parsed(parsed: dict, lang: str) -> dict:
     """Post-process AI output: capitalize ingredient names, fill empty quantities."""
+    fallback_title = {"it": "Ricetta senza titolo", "en": "Untitled recipe"}.get(lang, "Untitled recipe")
+    if not (parsed.get("titolo") or "").strip():
+        parsed["titolo"] = fallback_title
     qb = {"it": "q.b.", "en": "to taste", "fr": "q.s.", "es": "c.s."}.get(lang, "q.b.")
     for ing in parsed.get("ingredienti", []):
         nome = (ing.get("nome") or "").strip()
