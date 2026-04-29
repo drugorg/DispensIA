@@ -72,6 +72,12 @@
         "projectId": "45fe0b74-c230-4c8a-9a80-c0faf484084b"
       }
     },
-    "owner": "drugorg"
+    "owner": "drugorg",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/45fe0b74-c230-4c8a-9a80-c0faf484084b"
+    }
   }
 }
