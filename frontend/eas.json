@@ -44,6 +44,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "../../dispensia-cc80bf99acc3.json",
+        "track": "alpha",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }
