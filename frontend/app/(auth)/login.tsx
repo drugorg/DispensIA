@@ -1,4 +1,4 @@
-import { useSignIn, useSSO } from '@clerk/clerk-expo';
+import { useSignIn, useSignUp, useSSO } from '@clerk/clerk-expo';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
@@ -11,37 +11,61 @@ import { colors } from '../../lib/theme';
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
-  const { signIn, setActive, isLoaded } = useSignIn();
+  const { signIn, setActive: setActiveSignIn, isLoaded: signInLoaded } = useSignIn();
+  const { signUp, setActive: setActiveSignUp, isLoaded: signUpLoaded } = useSignUp();
   const { startSSOFlow } = useSSO();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [pendingVerification, setPendingVerification] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const onSendCode = async () => {
-    if (!isLoaded || !email.trim()) return;
+    if (!signInLoaded || !signUpLoaded || !email.trim()) return;
     setLoading(true);
     try {
-      const { supportedFirstFactors } = await signIn.create({ identifier: email });
+      // Try sign in first
+      const { supportedFirstFactors } = await signIn!.create({ identifier: email });
       const factor = supportedFirstFactors?.find((f: any) => f.strategy === 'email_code');
       if (!factor) throw new Error('Email code not supported');
-      await signIn.prepareFirstFactor({ strategy: 'email_code', emailAddressId: (factor as any).emailAddressId });
+      await signIn!.prepareFirstFactor({ strategy: 'email_code', emailAddressId: (factor as any).emailAddressId });
+      setIsSignUp(false);
       setPendingVerification(true);
     } catch (err: any) {
-      Alert.alert(t('login.errorTitle'), err.errors?.[0]?.message || err.message);
+      const errCode = err.errors?.[0]?.code;
+      if (errCode === 'form_identifier_not_found' || errCode === 'form_password_incorrect') {
+        // Account doesn't exist — create it
+        try {
+          await signUp!.create({ emailAddress: email });
+          await signUp!.prepareEmailAddressVerification({ strategy: 'email_code' });
+          setIsSignUp(true);
+          setPendingVerification(true);
+        } catch (signUpErr: any) {
+          Alert.alert(t('login.errorTitle'), signUpErr.errors?.[0]?.message || signUpErr.message);
+        }
+      } else {
+        Alert.alert(t('login.errorTitle'), err.errors?.[0]?.message || err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const onVerifyCode = async () => {
-    if (!isLoaded || !code.trim()) return;
+    if (!signInLoaded || !signUpLoaded || !code.trim()) return;
     setLoading(true);
     try {
-      const res = await signIn.attemptFirstFactor({ strategy: 'email_code', code });
-      if (res.status === 'complete') {
-        await setActive({ session: res.createdSessionId });
+      if (isSignUp) {
+        const res = await signUp!.attemptEmailAddressVerification({ code });
+        if (res.status === 'complete') {
+          await setActiveSignUp!({ session: res.createdSessionId });
+        }
+      } else {
+        const res = await signIn!.attemptFirstFactor({ strategy: 'email_code', code });
+        if (res.status === 'complete') {
+          await setActiveSignIn!({ session: res.createdSessionId });
+        }
       }
     } catch (err: any) {
       Alert.alert(t('login.errorTitle'), err.errors?.[0]?.message || err.message);
@@ -137,7 +161,7 @@ export default function LoginScreen() {
                 <Text style={styles.btnPrimaryText}>{t('login.verifyCode')}</Text>
               )}
             </Pressable>
-            <Pressable onPress={() => setPendingVerification(false)}>
+            <Pressable onPress={() => { setPendingVerification(false); setIsSignUp(false); }}>
               <Text style={styles.backLink}>{t('login.changeEmail')}</Text>
             </Pressable>
           </View>

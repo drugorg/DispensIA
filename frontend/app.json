@@ -44,7 +44,9 @@
           },
           "iosAppGroupIdentifier": "group.com.dispensia.app",
           "iosShareExtensionName": "DispensIA Share",
-          "androidIntentFilters": ["text/*"]
+          "androidIntentFilters": [
+            "text/*"
+          ]
         }
       ],
       [
@@ -57,7 +59,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
