@@ -91,11 +91,14 @@
     "apple": "Continue with Apple",
     "or": "or",
     "emailPlaceholder": "Email",
-    "continueEmail": "Continue with Email",
+    "continueEmail": "Sign in with Email",
+    "createAccount": "Create account",
     "codePlaceholder": "Verification code",
     "verifyCode": "Verify code",
     "sentTo": "We sent a code to your email address",
     "changeEmail": "← Change email",
-    "errorTitle": "Error"
+    "errorTitle": "Error",
+    "noAccount": "No account? Sign up",
+    "hasAccount": "Already have an account? Sign in"
   }
 }

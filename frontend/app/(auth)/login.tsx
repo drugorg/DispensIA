@@ -21,36 +21,32 @@ export default function LoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const resetForm = () => {
+    setPendingVerification(false);
+    setCode('');
+  };
+
+  const switchMode = () => {
+    setIsSignUp(v => !v);
+    resetForm();
+  };
+
   const onSendCode = async () => {
     if (!signInLoaded || !signUpLoaded || !email.trim()) return;
     setLoading(true);
     try {
-      // Try sign in first
-      const { supportedFirstFactors } = await signIn!.create({ identifier: email });
-      const factor = supportedFirstFactors?.find((f: any) => f.strategy === 'email_code');
-      if (!factor) throw new Error('Email code not supported');
-      await signIn!.prepareFirstFactor({ strategy: 'email_code', emailAddressId: (factor as any).emailAddressId });
-      setIsSignUp(false);
+      if (isSignUp) {
+        await signUp!.create({ emailAddress: email });
+        await signUp!.prepareEmailAddressVerification({ strategy: 'email_code' });
+      } else {
+        const { supportedFirstFactors } = await signIn!.create({ identifier: email });
+        const factor = supportedFirstFactors?.find((f: any) => f.strategy === 'email_code');
+        if (!factor) throw new Error('Email code not supported');
+        await signIn!.prepareFirstFactor({ strategy: 'email_code', emailAddressId: (factor as any).emailAddressId });
+      }
       setPendingVerification(true);
     } catch (err: any) {
-      const errCode = err.errors?.[0]?.code ?? '';
-      const isNotFound =
-        errCode.includes('not_found') ||
-        errCode.includes('identifier') ||
-        errCode === 'form_password_incorrect';
-      if (isNotFound) {
-        // Account doesn't exist — create it
-        try {
-          await signUp!.create({ emailAddress: email });
-          await signUp!.prepareEmailAddressVerification({ strategy: 'email_code' });
-          setIsSignUp(true);
-          setPendingVerification(true);
-        } catch (signUpErr: any) {
-          Alert.alert(t('login.errorTitle'), signUpErr.errors?.[0]?.message || signUpErr.message);
-        }
-      } else {
-        Alert.alert(t('login.errorTitle'), err.errors?.[0]?.message || err.message);
-      }
+      Alert.alert(t('login.errorTitle'), err.errors?.[0]?.message || err.message);
     } finally {
       setLoading(false);
     }
@@ -136,8 +132,16 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.btnPrimaryText}>{t('login.continueEmail')}</Text>
+                <Text style={styles.btnPrimaryText}>
+                  {isSignUp ? t('login.createAccount') : t('login.continueEmail')}
+                </Text>
               )}
+            </Pressable>
+
+            <Pressable onPress={switchMode}>
+              <Text style={styles.switchText}>
+                {isSignUp ? t('login.hasAccount') : t('login.noAccount')}
+              </Text>
             </Pressable>
           </View>
         ) : (
@@ -165,7 +169,7 @@ export default function LoginScreen() {
                 <Text style={styles.btnPrimaryText}>{t('login.verifyCode')}</Text>
               )}
             </Pressable>
-            <Pressable onPress={() => { setPendingVerification(false); setIsSignUp(false); }}>
+            <Pressable onPress={resetForm}>
               <Text style={styles.backLink}>{t('login.changeEmail')}</Text>
             </Pressable>
           </View>
@@ -211,4 +215,5 @@ const styles = StyleSheet.create({
   },
   verifyText: { color: colors.text2, textAlign: 'center', marginBottom: 8, lineHeight: 22 },
   backLink: { color: colors.text2, textAlign: 'center', marginTop: 12, fontSize: 14 },
+  switchText: { color: colors.accent, textAlign: 'center', marginTop: 4, fontSize: 14 },
 });
