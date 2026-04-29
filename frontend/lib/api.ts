@@ -45,7 +45,13 @@ export async function deleteRecipe(recipeId: string, userId: string) {
 
 export async function createRecipe(
   userId: string,
-  data: { titolo: string; ingredienti: Ingredient[]; preparazione: string[]; porzioni?: number | null }
+  data: {
+    titolo: string;
+    ingredienti: Ingredient[];
+    preparazione: string[];
+    porzioni?: number | null;
+    thumbnail?: string;
+  }
 ): Promise<Recipe> {
   const res = await fetch(`${API_BASE}/recipes`, {
     method: 'POST',

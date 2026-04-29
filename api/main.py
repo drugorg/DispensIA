@@ -84,6 +84,7 @@ class RecipeCreate(BaseModel):
     ingredienti: list[IngredientUpdate] = []
     preparazione: list[str] = []
     porzioni: int | None = None
+    thumbnail: str | None = None
  
  
 # =================================================================
@@ -520,7 +521,7 @@ async def create_recipe(payload: RecipeCreate):
         "ingredienti": [i.model_dump() for i in payload.ingredienti],
         "preparazione": [s for s in payload.preparazione if s.strip()],
         "porzioni": payload.porzioni,
-        "thumbnail": None,
+        "thumbnail": payload.thumbnail,
         "source_url": None,
         "platform": "manual",
         "created_at": datetime.now(timezone.utc),

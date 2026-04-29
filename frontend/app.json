@@ -60,7 +60,13 @@
       ],
       "expo-secure-store",
       "expo-web-browser",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permetti a DispensIA di accedere alle foto per aggiungere un'immagine alla tua ricetta."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

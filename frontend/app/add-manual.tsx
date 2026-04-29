@@ -16,7 +16,10 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { createRecipe, Ingredient } from '../lib/api';
 import { colors } from '../lib/theme';
 
@@ -28,6 +31,40 @@ export default function AddManualScreen() {
   const [titolo, setTitolo] = useState('');
   const [ingredienti, setIngredienti] = useState<Ingredient[]>([{ nome: '', quantita: '' }]);
   const [steps, setSteps] = useState<string[]>(['']);
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [pickingPhoto, setPickingPhoto] = useState(false);
+
+  const onPickPhoto = async () => {
+    setPickingPhoto(true);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(t('common.error'), t('add.photoPermDenied'));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        quality: 1,
+        allowsEditing: true,
+        aspect: [9, 16],
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      // Comprimi: max 600px lato lungo, JPEG q=0.6
+      const manipulated = await manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 400 } }],
+        { compress: 0.6, format: SaveFormat.JPEG, base64: true }
+      );
+      if (manipulated.base64) {
+        setThumbnail(`data:image/jpeg;base64,${manipulated.base64}`);
+      }
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e.message || 'Photo error');
+    } finally {
+      setPickingPhoto(false);
+    }
+  };
 
   const mut = useMutation({
     mutationFn: () =>
@@ -35,6 +72,7 @@ export default function AddManualScreen() {
         titolo: titolo.trim(),
         ingredienti: ingredienti.filter(i => i.nome.trim()),
         preparazione: steps.filter(s => s.trim()),
+        thumbnail: thumbnail ?? undefined,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['recipes', user?.id] });
@@ -85,6 +123,29 @@ export default function AddManualScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
         >
+          <Text style={styles.label}>{t('add.photoLabel')}</Text>
+          <Pressable style={styles.photoBox} onPress={onPickPhoto} disabled={pickingPhoto}>
+            {thumbnail ? (
+              <>
+                <Image source={{ uri: thumbnail }} style={styles.photoImage} contentFit="cover" />
+                <Pressable
+                  style={styles.photoRemove}
+                  onPress={() => setThumbnail(null)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close" size={16} color="white" />
+                </Pressable>
+              </>
+            ) : pickingPhoto ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : (
+              <>
+                <Ionicons name="image-outline" size={28} color={colors.text3} />
+                <Text style={styles.photoText}>{t('add.photoAdd')}</Text>
+              </>
+            )}
+          </Pressable>
+
           <Text style={styles.label}>{t('add.titleLabel')}</Text>
           <TextInput
             style={styles.input}
@@ -229,4 +290,29 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   saveText: { color: 'white', fontWeight: '700', fontSize: 15 },
+  photoBox: {
+    height: 180,
+    borderRadius: 14,
+    backgroundColor: colors.bg2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoImage: { ...StyleSheet.absoluteFillObject },
+  photoText: { color: colors.text3, fontSize: 13, marginTop: 8 },
+  photoRemove: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
