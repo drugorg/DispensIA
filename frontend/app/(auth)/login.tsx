@@ -33,8 +33,12 @@ export default function LoginScreen() {
       setIsSignUp(false);
       setPendingVerification(true);
     } catch (err: any) {
-      const errCode = err.errors?.[0]?.code;
-      if (errCode === 'form_identifier_not_found' || errCode === 'form_password_incorrect') {
+      const errCode = err.errors?.[0]?.code ?? '';
+      const isNotFound =
+        errCode.includes('not_found') ||
+        errCode.includes('identifier') ||
+        errCode === 'form_password_incorrect';
+      if (isNotFound) {
         // Account doesn't exist — create it
         try {
           await signUp!.create({ emailAddress: email });
