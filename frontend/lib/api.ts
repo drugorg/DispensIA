@@ -43,6 +43,22 @@ export async function deleteRecipe(recipeId: string, userId: string) {
   return res.json();
 }
 
+export async function createRecipe(
+  userId: string,
+  data: { titolo: string; ingredienti: Ingredient[]; preparazione: string[]; porzioni?: number | null }
+): Promise<Recipe> {
+  const res = await fetch(`${API_BASE}/recipes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, ...data }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Errore nella creazione');
+  }
+  return res.json();
+}
+
 export async function updateRecipe(
   recipeId: string,
   userId: string,

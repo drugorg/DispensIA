@@ -1,5 +1,5 @@
 import { useUser } from '@clerk/clerk-expo';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
 import * as Clipboard from 'expo-clipboard';
@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { extractRecipe, fetchRecipes } from '../../lib/api';
+import { extractRecipe } from '../../lib/api';
 import { colors } from '../../lib/theme';
 
 function detectPlatform(url: string): 'tiktok' | 'instagram' | null {
@@ -35,12 +35,6 @@ export default function AddScreen() {
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-
-  const { data: recipes = [] } = useQuery({
-    queryKey: ['recipes', user?.id],
-    queryFn: () => fetchRecipes(user!.id),
-    enabled: !!user?.id,
-  });
 
   const platform = detectPlatform(url);
 
@@ -78,10 +72,9 @@ export default function AddScreen() {
     } catch {}
   };
 
-  const steps = [
-    { icon: '📱', label: t('add.step1Label'), sub: t('add.step1Sub') },
-    { icon: '🔗', label: t('add.step2Label'), sub: t('add.step2Sub') },
-    { icon: '📋', label: t('add.step3Label'), sub: t('add.step3Sub') },
+  const methods = [
+    { icon: 'share-social-outline' as const, label: t('add.method1Label'), sub: t('add.method1Sub') },
+    { icon: 'link-outline' as const, label: t('add.method2Label'), sub: t('add.method2Sub') },
   ];
 
   return (
@@ -163,25 +156,35 @@ export default function AddScreen() {
             )}
           </View>
 
-          {recipes.length === 0 && (
-            <>
-              <Text style={styles.sectionLabel}>{t('add.howTitle')}</Text>
-              <View style={{ gap: 10, paddingHorizontal: 16 }}>
-                {steps.map((s, i) => (
-                  <View key={i} style={styles.stepCard}>
-                    <Text style={{ fontSize: 22 }}>{s.icon}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.stepLabel}>{s.label}</Text>
-                      <Text style={styles.stepSub}>{s.sub}</Text>
-                    </View>
-                    <View style={styles.stepNum}>
-                      <Text style={styles.stepNumText}>{i + 1}</Text>
-                    </View>
-                  </View>
-                ))}
+          <Text style={styles.sectionLabel}>{t('add.howTitle')}</Text>
+          <View style={{ gap: 10, paddingHorizontal: 16, marginBottom: 24 }}>
+            {methods.map((m, i) => (
+              <View key={i} style={styles.stepCard}>
+                <View style={styles.stepIconWrap}>
+                  <Ionicons name={m.icon} size={20} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.stepLabel}>{m.label}</Text>
+                  <Text style={styles.stepSub}>{m.sub}</Text>
+                </View>
               </View>
-            </>
-          )}
+            ))}
+          </View>
+
+          <Text style={styles.sectionLabel}>{t('add.manualTitle')}</Text>
+          <Pressable
+            style={styles.manualCard}
+            onPress={() => router.push('/add-manual' as any)}
+          >
+            <View style={styles.stepIconWrap}>
+              <Ionicons name="create-outline" size={20} color={colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.stepLabel}>{t('add.manualLabel')}</Text>
+              <Text style={styles.stepSub}>{t('add.manualSub')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.text3} />
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -270,17 +273,25 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
   },
-  stepLabel: { color: colors.text, fontWeight: '600', fontSize: 14 },
-  stepSub: { color: colors.text2, fontSize: 12, marginTop: 2 },
-  stepNum: {
-    width: 24,
-    height: 24,
+  stepIconWrap: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: colors.bg3,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: 'rgba(255,107,53,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepNumText: { color: colors.accent, fontSize: 12, fontWeight: '700' },
+  stepLabel: { color: colors.text, fontWeight: '600', fontSize: 14 },
+  stepSub: { color: colors.text2, fontSize: 12, marginTop: 2 },
+  manualCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: colors.bg2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    padding: 14,
+    marginHorizontal: 16,
+  },
 });

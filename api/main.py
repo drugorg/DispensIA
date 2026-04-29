@@ -76,6 +76,14 @@ class RecipeUpdate(BaseModel):
     titolo: str | None = None
     ingredienti: list[IngredientUpdate] | None = None
     preparazione: list[str] | None = None
+
+
+class RecipeCreate(BaseModel):
+    user_id: str
+    titolo: str
+    ingredienti: list[IngredientUpdate] = []
+    preparazione: list[str] = []
+    porzioni: int | None = None
  
  
 # =================================================================
@@ -502,6 +510,28 @@ async def get_recipes(user_id: str):
     return recipes
  
  
+@app.post("/recipes")
+async def create_recipe(payload: RecipeCreate):
+    if not payload.titolo.strip():
+        raise HTTPException(status_code=400, detail="Titolo richiesto")
+
+    doc = {
+        "titolo": payload.titolo.strip(),
+        "ingredienti": [i.model_dump() for i in payload.ingredienti],
+        "preparazione": [s for s in payload.preparazione if s.strip()],
+        "porzioni": payload.porzioni,
+        "thumbnail": None,
+        "source_url": None,
+        "platform": "manual",
+        "created_at": datetime.now(timezone.utc),
+    }
+    result = await global_recipes.insert_one(doc)
+    await user_vaults.insert_one({"user_id": payload.user_id, "recipe_id": result.inserted_id})
+
+    doc["_id"] = str(result.inserted_id)
+    return doc
+
+
 @app.delete("/recipes/{recipe_id}")
 async def delete_recipe(recipe_id: str, user_id: str):
     await user_vaults.delete_one({"user_id": user_id, "recipe_id": ObjectId(recipe_id)})

@@ -191,7 +191,12 @@ export default function RecipeDetail() {
               <Animated.View style={[StyleSheet.absoluteFill, { top: -30, bottom: -30 }, heroParallax]}>
                 <Image source={{ uri: recipe.thumbnail }} style={{ flex: 1 }} contentFit="cover" />
               </Animated.View>
-              <View style={styles.heroGrad} />
+              <Image
+                source={require('../../assets/images/hero-gradient.png')}
+                style={styles.heroGrad}
+                contentFit="fill"
+                pointerEvents="none"
+              />
               {!editMode && <Text style={styles.heroTitle}>{recipe.titolo}</Text>}
             </View>
           )}
@@ -461,8 +466,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: '70%',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    height: '85%',
   },
   heroTitle: {
     position: 'absolute',
