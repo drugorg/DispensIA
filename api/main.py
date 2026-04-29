@@ -500,15 +500,30 @@ async def extract_recipe(request: LinkRequest):
  
 @app.get("/recipes")
 async def get_recipes(user_id: str):
+    favorites: dict[str, bool] = {}
     saved_ids = []
     async for link in user_vaults.find({"user_id": user_id}):
         saved_ids.append(link["recipe_id"])
- 
+        favorites[str(link["recipe_id"])] = bool(link.get("favorite", False))
+
     recipes = []
     async for r in global_recipes.find({"_id": {"$in": saved_ids}}):
         r["_id"] = str(r["_id"])
+        r["favorite"] = favorites.get(r["_id"], False)
         recipes.append(r)
     return recipes
+
+
+@app.patch("/recipes/{recipe_id}/favorite")
+async def toggle_favorite(recipe_id: str, user_id: str, favorite: bool):
+    oid = ObjectId(recipe_id)
+    result = await user_vaults.update_one(
+        {"user_id": user_id, "recipe_id": oid},
+        {"$set": {"favorite": favorite}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Ricetta non trovata nel vault")
+    return {"status": "ok", "favorite": favorite}
  
  
 @app.post("/recipes")

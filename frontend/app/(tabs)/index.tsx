@@ -2,7 +2,7 @@ import { useUser } from '@clerk/clerk-expo';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Alert,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -21,7 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchRecipes, deleteRecipe, Recipe } from '../../lib/api';
+import { fetchRecipes, deleteRecipe, toggleFavorite, Recipe } from '../../lib/api';
 import { useCartStore } from '../../lib/cartStore';
 import { colors } from '../../lib/theme';
 
@@ -48,6 +49,8 @@ export default function VaultScreen() {
   const { t } = useTranslation();
   const { remove, isInCart } = useCartStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [favOnly, setFavOnly] = useState(false);
 
   const { data: recipes = [], isLoading } = useQuery({
     queryKey: ['recipes', user?.id],
@@ -56,11 +59,41 @@ export default function VaultScreen() {
     select: (d) => [...d].reverse(),
   });
 
+  const filteredRecipes = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = recipes;
+    if (favOnly) list = list.filter(r => r.favorite);
+    if (q) {
+      list = list.filter(r => {
+        if (r.titolo?.toLowerCase().includes(q)) return true;
+        return r.ingredienti?.some(i => i.nome?.toLowerCase().includes(q));
+      });
+    }
+    // Preferiti in cima
+    return [...list].sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite));
+  }, [recipes, search, favOnly]);
+
   const delMut = useMutation({
     mutationFn: ({ id }: { id: string }) => deleteRecipe(id, user!.id),
     onSuccess: (_, { id }) => {
       remove(id);
       qc.invalidateQueries({ queryKey: ['recipes', user?.id] });
+    },
+  });
+
+  const favMut = useMutation({
+    mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) =>
+      toggleFavorite(id, user!.id, favorite),
+    onMutate: async ({ id, favorite }) => {
+      await qc.cancelQueries({ queryKey: ['recipes', user?.id] });
+      const prev = qc.getQueryData<Recipe[]>(['recipes', user?.id]);
+      qc.setQueryData<Recipe[]>(['recipes', user?.id], (old) =>
+        old?.map(r => (r._id === id ? { ...r, favorite } : r)) ?? []
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['recipes', user?.id], ctx.prev);
     },
   });
 
@@ -79,6 +112,7 @@ export default function VaultScreen() {
 
   const renderCard = ({ item }: { item: Recipe }) => {
     const inCart = isInCart(item._id);
+    const isFav = !!item.favorite;
     return (
       <Pressable
         style={styles.card}
@@ -92,6 +126,17 @@ export default function VaultScreen() {
             <Text style={{ fontSize: 32 }}>🍽️</Text>
           </View>
         )}
+        <Pressable
+          style={styles.favBadge}
+          onPress={(e) => { e.stopPropagation?.(); favMut.mutate({ id: item._id, favorite: !isFav }); }}
+          hitSlop={10}
+        >
+          <Ionicons
+            name={isFav ? 'heart' : 'heart-outline'}
+            size={16}
+            color={isFav ? colors.red : 'white'}
+          />
+        </Pressable>
         {inCart && (
           <View style={styles.cartBadge}>
             <Ionicons name="bag-check" size={12} color="white" />
@@ -129,6 +174,41 @@ export default function VaultScreen() {
         </View>
       </View>
 
+      {!isLoading && recipes.length > 0 && (
+        <View style={styles.toolbar}>
+          <View style={styles.searchWrap}>
+            <Ionicons name="search" size={16} color={colors.text3} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={t('vault.searchPlaceholder')}
+              placeholderTextColor={colors.text3}
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => setSearch('')} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color={colors.text3} />
+              </Pressable>
+            )}
+          </View>
+          <Pressable
+            onPress={() => setFavOnly(v => !v)}
+            style={[styles.chip, favOnly && styles.chipActive]}
+          >
+            <Ionicons
+              name={favOnly ? 'heart' : 'heart-outline'}
+              size={14}
+              color={favOnly ? 'white' : colors.text2}
+            />
+            <Text style={[styles.chipText, favOnly && { color: 'white' }]}>
+              {t('vault.filterFavorites')}
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
       {isLoading ? (
         <FlatList
           data={[1, 2, 3, 4]}
@@ -145,14 +225,20 @@ export default function VaultScreen() {
           <Text style={styles.emptyTitle}>{t('vault.empty.title')}</Text>
           <Text style={styles.emptySub}>{t('vault.empty.sub')}</Text>
         </View>
+      ) : filteredRecipes.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyIcon}>🔍</Text>
+          <Text style={styles.emptyTitle}>{t('vault.noResults')}</Text>
+        </View>
       ) : (
         <FlatList
-          data={recipes}
+          data={filteredRecipes}
           renderItem={renderCard}
           keyExtractor={(item) => item._id}
           numColumns={2}
           columnWrapperStyle={{ gap: 12, paddingHorizontal: 16 }}
           contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
           }
@@ -219,4 +305,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  favBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolbar: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  searchWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.bg2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  searchInput: { flex: 1, color: colors.text, fontSize: 14 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.bg2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  chipText: { color: colors.text2, fontSize: 12, fontWeight: '600' },
 });

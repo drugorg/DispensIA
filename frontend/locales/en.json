@@ -55,6 +55,9 @@
   "vault": {
     "recipes_one": "{{count}} recipe",
     "recipes_other": "{{count}} recipes",
+    "searchPlaceholder": "Search recipes or ingredients...",
+    "filterFavorites": "Favorites only",
+    "noResults": "No recipes found",
     "empty": {
       "title": "Your Vault is empty",
       "sub": "Tap + to save your first recipe from TikTok or Instagram"

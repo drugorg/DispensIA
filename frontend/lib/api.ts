@@ -14,6 +14,7 @@ export interface Recipe {
   thumbnail?: string;
   source_url?: string;
   platform?: string;
+  favorite?: boolean;
 }
 
 export async function fetchRecipes(userId: string): Promise<Recipe[]> {
@@ -32,6 +33,15 @@ export async function extractRecipe(url: string, userId: string, lang = 'it') {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Impossibile estrarre la ricetta');
   }
+  return res.json();
+}
+
+export async function toggleFavorite(recipeId: string, userId: string, favorite: boolean) {
+  const res = await fetch(
+    `${API_BASE}/recipes/${recipeId}/favorite?user_id=${userId}&favorite=${favorite}`,
+    { method: 'PATCH' }
+  );
+  if (!res.ok) throw new Error('Errore preferito');
   return res.json();
 }
 
