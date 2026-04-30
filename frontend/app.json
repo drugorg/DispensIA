@@ -15,6 +15,9 @@
         "light": "./assets/images/icon.png",
         "dark": "./assets/images/icon-dark.png",
         "tinted": "./assets/images/icon-dark.png"
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,7 +29,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -44,6 +50,7 @@
           },
           "iosAppGroupIdentifier": "group.com.dispensia.app",
           "iosShareExtensionName": "DispensIA Share",
+          "iosShareExtensionBundleIdentifier": "com.dispensia.app.DispensIAShare",
           "androidIntentFilters": [
             "text/*"
           ]
@@ -75,7 +82,24 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "45fe0b74-c230-4c8a-9a80-c0faf484084b"
+        "projectId": "45fe0b74-c230-4c8a-9a80-c0faf484084b",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "DispensIAShare",
+                  "bundleIdentifier": "com.dispensia.app.DispensIAShare",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.dispensia.app"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
       }
     },
     "owner": "drugorg",
