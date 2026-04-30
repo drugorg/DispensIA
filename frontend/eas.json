@@ -49,6 +49,11 @@
         "serviceAccountKeyPath": "../../dispensia-cc80bf99acc3.json",
         "track": "alpha",
         "releaseStatus": "draft"
+      },
+      "ios": {
+        "ascApiKeyPath": "../../dispensia-apple-key.p8",
+        "ascApiKeyId": "W95JP92R5X",
+        "ascApiIssuerId": "e326a27c-a92f-454c-8dad-8265bf06814d"
       }
     }
   }
