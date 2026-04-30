@@ -82,24 +82,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "45fe0b74-c230-4c8a-9a80-c0faf484084b",
-        "build": {
-          "experimental": {
-            "ios": {
-              "appExtensions": [
-                {
-                  "targetName": "DispensIAShare",
-                  "bundleIdentifier": "com.dispensia.app.DispensIAShare",
-                  "entitlements": {
-                    "com.apple.security.application-groups": [
-                      "group.com.dispensia.app"
-                    ]
-                  }
-                }
-              ]
-            }
-          }
-        }
+        "projectId": "45fe0b74-c230-4c8a-9a80-c0faf484084b"
       }
     },
     "owner": "drugorg",
