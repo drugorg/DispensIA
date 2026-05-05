@@ -14,6 +14,7 @@ export interface Recipe {
   thumbnail?: string;
   source_url?: string;
   platform?: string;
+  author?: string;
   favorite?: boolean;
 }
 

@@ -69,6 +69,9 @@
     "progress": "PROGRESSO SPESA",
     "done": "✓ Fatto!",
     "counter": "{{checked}}/{{total}} ingredienti",
+    "hiddenItems_one": "{{count}} ingrediente già spuntato altrove",
+    "hiddenItems_other": "{{count}} ingredienti già spuntati altrove",
+    "allCovered": "✓ Tutti gli ingredienti sono già nella lista",
     "empty": {
       "title": "Lista vuota",
       "sub": "Apri una ricetta dal Vault e premi \"Aggiungi alla spesa\""
@@ -76,9 +79,10 @@
   },
   "recipe": {
     "notFound": "Ricetta non trovata",
-    "pantry": "IN DISPENSA",
-    "allReady": "✓ Tutto pronto!",
-    "hint": "💡 Tocca gli ingredienti che hai già in dispensa per depennarli.",
+    "progress": "AVANZAMENTO",
+    "allDone": "✓ Ricetta completa!",
+    "byAuthor": "di {{author}}",
+    "stepsCounter": "{{done}}/{{total}} passi",
     "ingredients": "INGREDIENTI",
     "preparation": "PREPARAZIONE",
     "portions": "PORZIONI",
@@ -102,9 +106,23 @@
     "info": "Informazioni",
     "privacy": "Privacy & Dati",
     "tos": "Termini di servizio",
+    "tutorial": "Come condividere da TikTok / Instagram",
     "logout": "Esci",
     "logoutConfirm": "Sei sicuro di voler uscire?",
-    "version": "DispensIA v1.0.0 · fatto con ❤️ e AI"
+    "version": "DispensIA v1.0.0"
+  },
+  "tutorial": {
+    "skip": "Salta",
+    "next": "Avanti",
+    "start": "Iniziamo!",
+    "step1Title": "Trova un video",
+    "step1Sub": "Apri TikTok o Instagram e cerca una ricetta che ti ispira.",
+    "step2Title": "Tocca Condividi",
+    "step2Sub": "Sotto il video tocca il pulsante \"Condividi\" (la freccia).",
+    "step3Title": "Scegli \"Altro\"",
+    "step3Sub": "Nel menu di condivisione scorri e tocca \"Altro\" o \"More\".",
+    "step4Title": "Seleziona DispensIA",
+    "step4Sub": "Nella lista delle app scegli DispensIA: la ricetta verrà estratta in pochi secondi."
   },
   "login": {
     "tagline": "Video → ricette in secondi",

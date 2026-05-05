@@ -2,7 +2,8 @@ import { useUser } from '@clerk/clerk-expo';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -25,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { fetchRecipes, deleteRecipe, toggleFavorite, Recipe } from '../../lib/api';
 import { useCartStore } from '../../lib/cartStore';
 import { colors } from '../../lib/theme';
+import { TUTORIAL_SEEN_KEY } from '../tutorial';
 
 function SkeletonCard() {
   const opacity = useSharedValue(0.4);
@@ -51,6 +53,14 @@ export default function VaultScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [favOnly, setFavOnly] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    SecureStore.getItemAsync(TUTORIAL_SEEN_KEY).then((v) => {
+      if (!v) router.push('/tutorial' as any);
+    });
+  }, []);
 
   const { data: recipes = [], isLoading } = useQuery({
     queryKey: ['recipes', user?.id],
@@ -111,6 +121,9 @@ export default function VaultScreen() {
   };
 
   const renderCard = ({ item }: { item: Recipe }) => {
+    if (item._id === '__placeholder__') {
+      return <View style={[styles.card, { backgroundColor: 'transparent', borderColor: 'transparent' }]} />;
+    }
     const inCart = isInCart(item._id);
     const isFav = !!item.favorite;
     return (
@@ -176,23 +189,36 @@ export default function VaultScreen() {
 
       {!isLoading && recipes.length > 0 && (
         <View style={styles.toolbar}>
-          <View style={styles.searchWrap}>
-            <Ionicons name="search" size={16} color={colors.text3} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={t('vault.searchPlaceholder')}
-              placeholderTextColor={colors.text3}
-              value={search}
-              onChangeText={setSearch}
-              autoCapitalize="none"
-              returnKeyType="search"
-            />
-            {search.length > 0 && (
-              <Pressable onPress={() => setSearch('')} hitSlop={8}>
-                <Ionicons name="close-circle" size={16} color={colors.text3} />
+          {searchOpen || search.length > 0 ? (
+            <View style={styles.searchWrap}>
+              <Ionicons name="search" size={18} color={colors.accent} />
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                placeholder={t('vault.searchPlaceholder')}
+                placeholderTextColor={colors.text3}
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                returnKeyType="search"
+                autoFocus
+              />
+              <Pressable
+                onPress={() => { setSearch(''); setSearchOpen(false); }}
+                hitSlop={8}
+                style={styles.searchClose}
+              >
+                <Ionicons name="close" size={16} color={colors.text2} />
               </Pressable>
-            )}
-          </View>
+            </View>
+          ) : (
+            <Pressable
+              style={styles.searchIconBtn}
+              onPress={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+            >
+              <Ionicons name="search" size={18} color={colors.text2} />
+            </Pressable>
+          )}
           <Pressable
             onPress={() => setFavOnly(v => !v)}
             style={[styles.chip, favOnly && styles.chipActive]}
@@ -232,7 +258,11 @@ export default function VaultScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredRecipes}
+          data={
+            filteredRecipes.length % 2 === 1
+              ? [...filteredRecipes, { _id: '__placeholder__' } as Recipe]
+              : filteredRecipes
+          }
           renderItem={renderCard}
           keyExtractor={(item) => item._id}
           numColumns={2}
@@ -328,14 +358,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: colors.bg2,
+    backgroundColor: colors.bg3,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderColor: 'rgba(255,107,53,0.4)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
     height: 40,
   },
   searchInput: { flex: 1, color: colors.text, fontSize: 14 },
+  searchIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.bg2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchClose: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.bg3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',

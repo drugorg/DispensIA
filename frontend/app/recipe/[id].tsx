@@ -58,7 +58,7 @@ export default function RecipeDetail() {
   const qc = useQueryClient();
   const { t } = useTranslation();
 
-  const [checked, setChecked] = useState<number[]>([]);
+  const [checkedSteps, setCheckedSteps] = useState<number[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [draft, setDraft] = useState<{
     titolo: string;
@@ -118,12 +118,13 @@ export default function RecipeDetail() {
   const usePortions = (recipe.porzioni ?? 0) > 0;
   const mult = usePortions ? persone / recipe.porzioni! : MULTIPLIERS[multiplierIdx];
 
-  const pct = recipe.ingredienti?.length
-    ? Math.round((checked.length / recipe.ingredienti.length) * 100)
-    : 0;
+  const stepsTotal = recipe.preparazione?.length ?? 0;
+  const stepsDone = checkedSteps.length;
+  const pct = stepsTotal ? Math.round((stepsDone / stepsTotal) * 100) : 0;
+  const showProgress = !editMode && stepsTotal > 0;
 
-  const toggleIng = (i: number) =>
-    setChecked((p) => (p.includes(i) ? p.filter((x) => x !== i) : [...p, i]));
+  const toggleStep = (i: number) =>
+    setCheckedSteps((p) => (p.includes(i) ? p.filter((x) => x !== i) : [...p, i]));
 
   const handleCartToggle = async () => {
     cartScale.value = withSequence(
@@ -183,8 +184,27 @@ export default function RecipeDetail() {
           onScroll={scrollHandler}
           scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"
+          stickyHeaderIndices={showProgress ? [1] : undefined}
         >
           <View style={styles.handle} />
+
+          {showProgress ? (
+            <View style={styles.progressSticky}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={styles.progLabel}>{t('recipe.progress')}</Text>
+                <Text style={[styles.progValue, { color: pct === 100 ? colors.green : colors.accent }]}>
+                  {pct === 100
+                    ? t('recipe.allDone')
+                    : t('recipe.stepsCounter', { done: stepsDone, total: stepsTotal })}
+                </Text>
+              </View>
+              <View style={styles.progTrack}>
+                <View style={[styles.progBar, { width: `${pct}%` }]} />
+              </View>
+            </View>
+          ) : (
+            <View />
+          )}
 
           {recipe.thumbnail && (
             <View style={styles.hero}>
@@ -197,7 +217,14 @@ export default function RecipeDetail() {
                 contentFit="fill"
                 pointerEvents="none"
               />
-              {!editMode && <Text style={styles.heroTitle}>{recipe.titolo}</Text>}
+              {!editMode && (
+                <View style={styles.heroTextWrap}>
+                  <Text style={styles.heroTitle}>{recipe.titolo}</Text>
+                  {!!recipe.author && (
+                    <Text style={styles.heroAuthor}>{t('recipe.byAuthor', { author: recipe.author })}</Text>
+                  )}
+                </View>
+              )}
             </View>
           )}
 
@@ -215,7 +242,12 @@ export default function RecipeDetail() {
               </>
             ) : (
               !recipe.thumbnail && (
-                <Text style={styles.titleNoImg}>{recipe.titolo}</Text>
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={styles.titleNoImg}>{recipe.titolo}</Text>
+                  {!!recipe.author && (
+                    <Text style={styles.titleNoImgAuthor}>{t('recipe.byAuthor', { author: recipe.author })}</Text>
+                  )}
+                </View>
               )
             )}
 
@@ -259,24 +291,16 @@ export default function RecipeDetail() {
               </View>
             )}
 
-            {/* ── Progresso dispensa ── */}
-            {!editMode && (
-              <>
-                <View style={{ marginBottom: 18 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={styles.progLabel}>{t('recipe.pantry')}</Text>
-                    <Text style={[styles.progValue, { color: pct === 100 ? colors.green : colors.accent }]}>
-                      {pct === 100 ? t('recipe.allReady') : `${pct}%`}
-                    </Text>
-                  </View>
-                  <View style={styles.progTrack}>
-                    <View style={[styles.progBar, { width: `${pct}%` }]} />
-                  </View>
-                </View>
-                <View style={styles.hint}>
-                  <Text style={styles.hintText}>{t('recipe.hint')}</Text>
-                </View>
-              </>
+            {/* ── Link video originale (in cima) ── */}
+            {recipe.source_url && !editMode && (
+              <Pressable
+                style={styles.videoBtnTop}
+                onPress={() => Linking.openURL(recipe.source_url!)}
+              >
+                <Ionicons name="play-circle" size={18} color={colors.accent} />
+                <Text style={styles.videoBtnTopText}>{t('recipe.watchVideo')}</Text>
+                <Ionicons name="open-outline" size={14} color={colors.text3} />
+              </Pressable>
             )}
 
             {/* ── Ingredienti ── */}
@@ -312,18 +336,15 @@ export default function RecipeDetail() {
                 </>
               ) : (
                 recipe.ingredienti?.map((ing, i) => (
-                  <Pressable
+                  <View
                     key={i}
                     style={[styles.ing, i < recipe.ingredienti.length - 1 && styles.ingBorder]}
-                    onPress={() => toggleIng(i)}
                   >
-                    <Text style={[styles.ingName, checked.includes(i) && styles.ingDone]}>
-                      {ing.nome}
-                    </Text>
-                    <Text style={[styles.ingQty, checked.includes(i) && styles.ingDone]}>
+                    <Text style={styles.ingName}>{ing.nome}</Text>
+                    <Text style={styles.ingQty}>
                       {ing.quantita ? scaleQty(ing.quantita, mult) : t('recipe.qb')}
                     </Text>
-                  </Pressable>
+                  </View>
                 ))
               )}
             </View>
@@ -357,26 +378,23 @@ export default function RecipeDetail() {
                   </Pressable>
                 </>
               ) : (
-                recipe.preparazione?.map((step, i) => (
-                  <View key={i} style={styles.step}>
-                    <View style={styles.stepNum}>
-                      <Text style={styles.stepNumText}>{i + 1}</Text>
-                    </View>
-                    <Text style={styles.stepText}>{step}</Text>
-                  </View>
-                ))
+                recipe.preparazione?.map((step, i) => {
+                  const done = checkedSteps.includes(i);
+                  return (
+                    <Pressable key={i} style={styles.step} onPress={() => toggleStep(i)}>
+                      <View style={[styles.stepNum, done && styles.stepNumDone]}>
+                        {done ? (
+                          <Ionicons name="checkmark" size={14} color="white" />
+                        ) : (
+                          <Text style={styles.stepNumText}>{i + 1}</Text>
+                        )}
+                      </View>
+                      <Text style={[styles.stepText, done && styles.stepTextDone]}>{step}</Text>
+                    </Pressable>
+                  );
+                })
               )}
             </View>
-
-            {recipe.source_url && !editMode && (
-              <Pressable
-                style={styles.videoBtn}
-                onPress={() => Linking.openURL(recipe.source_url!)}
-              >
-                <Ionicons name="play" size={14} color={colors.text2} />
-                <Text style={styles.videoBtnText}>{t('recipe.watchVideo')}</Text>
-              </Pressable>
-            )}
           </View>
         </Animated.ScrollView>
 
@@ -468,23 +486,57 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: '85%',
   },
-  heroTitle: {
+  heroTextWrap: {
     position: 'absolute',
     bottom: 16,
     left: 20,
     right: 20,
+  },
+  heroTitle: {
     color: 'white',
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.5,
+  },
+  heroAuthor: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
   },
   titleNoImg: {
     color: colors.text,
     fontSize: 24,
     fontWeight: '800',
     letterSpacing: -1,
-    marginBottom: 16,
   },
+  titleNoImgAuthor: {
+    color: colors.text2,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  progressSticky: {
+    backgroundColor: colors.bg,
+    paddingHorizontal: 22,
+    paddingTop: 10,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  videoBtnTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: colors.bg2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    marginBottom: 22,
+  },
+  videoBtnTopText: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
   inner: { paddingHorizontal: 22, paddingBottom: 16 },
 
   // Serving stepper
@@ -531,15 +583,6 @@ const styles = StyleSheet.create({
   progValue: { fontSize: 12, fontWeight: '700' },
   progTrack: { height: 6, backgroundColor: colors.bg3, borderRadius: 3 },
   progBar: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
-  hint: {
-    backgroundColor: 'rgba(255,107,53,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,107,53,0.15)',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  hintText: { color: colors.accent2, fontSize: 13, lineHeight: 18 },
   sectionLabel: {
     color: colors.text3,
     fontSize: 10,
@@ -553,10 +596,9 @@ const styles = StyleSheet.create({
   ingBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   ingName: { color: colors.text, fontSize: 14, flex: 1 },
   ingQty: { color: colors.accent, fontSize: 13, fontWeight: '600' },
-  ingDone: { opacity: 0.4, textDecorationLine: 'line-through' },
 
   // Preparation view
-  step: { flexDirection: 'row', gap: 12, marginBottom: 14 },
+  step: { flexDirection: 'row', gap: 12, marginBottom: 14, alignItems: 'flex-start' },
   stepNum: {
     width: 24,
     height: 24,
@@ -567,9 +609,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    marginTop: 1,
   },
+  stepNumDone: { backgroundColor: colors.green, borderColor: colors.green },
   stepNumText: { color: colors.accent, fontSize: 11, fontWeight: '700' },
   stepText: { color: colors.text2, fontSize: 14, lineHeight: 22, flex: 1 },
+  stepTextDone: { opacity: 0.45, textDecorationLine: 'line-through' },
 
   // Edit mode
   editInput: {
@@ -594,21 +639,6 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   addRowText: { color: colors.accent, fontSize: 13, fontWeight: '600' },
-
-  // Video button
-  videoBtn: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 48,
-    backgroundColor: colors.bg2,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    marginBottom: 8,
-  },
-  videoBtnText: { color: colors.text2, fontSize: 13, fontWeight: '600' },
 
   // Sticky bar
   stickyBar: {

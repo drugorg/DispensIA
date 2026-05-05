@@ -20,9 +20,26 @@ export default function SettingsScreen() {
   };
 
   const menuItems = [
-    { icon: 'information-circle-outline', label: t('settings.info'), page: 'info' },
-    { icon: 'shield-checkmark-outline', label: t('settings.privacy'), page: 'privacy' },
-    { icon: 'document-text-outline', label: t('settings.tos'), page: 'tos' },
+    {
+      icon: 'help-circle-outline',
+      label: t('settings.tutorial'),
+      onPress: () => router.push('/tutorial' as any),
+    },
+    {
+      icon: 'information-circle-outline',
+      label: t('settings.info'),
+      onPress: () => router.push({ pathname: '/legal', params: { page: 'info' } } as any),
+    },
+    {
+      icon: 'shield-checkmark-outline',
+      label: t('settings.privacy'),
+      onPress: () => router.push({ pathname: '/legal', params: { page: 'privacy' } } as any),
+    },
+    {
+      icon: 'document-text-outline',
+      label: t('settings.tos'),
+      onPress: () => router.push({ pathname: '/legal', params: { page: 'tos' } } as any),
+    },
   ];
 
   return (
@@ -61,7 +78,7 @@ export default function SettingsScreen() {
             <Pressable
               key={i}
               style={[styles.row, i < menuItems.length - 1 && styles.rowBorder]}
-              onPress={() => router.push({ pathname: '/legal', params: { page: item.page } } as any)}
+              onPress={item.onPress}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <Ionicons name={item.icon as any} size={20} color={colors.text2} />

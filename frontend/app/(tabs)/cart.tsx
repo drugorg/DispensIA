@@ -2,7 +2,7 @@ import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,8 +24,41 @@ export default function CartScreen() {
   });
 
   const recipes = all.filter((r) => cartIds.includes(r._id));
-  const totalItems = recipes.reduce((s, r) => s + (r.ingredienti?.length || 0), 0);
-  const checkedCount = Object.values(checkedItems).filter(Boolean).length;
+
+  const norm = (s: string) => s.trim().toLowerCase();
+
+  // Names of ingredients already checked anywhere in the cart (= "I have it / bought").
+  const checkedNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of recipes) {
+      r.ingredienti?.forEach((ing, i) => {
+        if (checkedItems[`${r._id}-${i}`]) set.add(norm(ing.nome));
+      });
+    }
+    return set;
+  }, [recipes, checkedItems]);
+
+  // For each recipe, hide ingredients whose name is already checked in another recipe.
+  const visibleByRecipe = useMemo(() => {
+    const map: Record<string, { ing: { nome: string; quantita: string }; i: number }[]> = {};
+    for (const r of recipes) {
+      map[r._id] = (r.ingredienti || [])
+        .map((ing, i) => ({ ing, i }))
+        .filter(({ ing, i }) => {
+          const isSelfChecked = !!checkedItems[`${r._id}-${i}`];
+          return isSelfChecked || !checkedNames.has(norm(ing.nome));
+        });
+    }
+    return map;
+  }, [recipes, checkedItems, checkedNames]);
+
+  const totalItems = recipes.reduce((s, r) => s + (visibleByRecipe[r._id]?.length || 0), 0);
+  const checkedCount = recipes.reduce(
+    (s, r) =>
+      s +
+      (visibleByRecipe[r._id] || []).filter(({ i }) => checkedItems[`${r._id}-${i}`]).length,
+    0
+  );
   const pct = totalItems ? Math.round((checkedCount / totalItems) * 100) : 0;
 
   const toggleItem = (key: string) => setCheckedItems((p) => ({ ...p, [key]: !p[key] }));
@@ -90,21 +123,41 @@ export default function CartScreen() {
               </View>
 
               <View style={{ padding: 12 }}>
-                {r.ingredienti?.map((ing, i) => {
-                  const key = `${r._id}-${i}`;
-                  const done = !!checkedItems[key];
+                {(() => {
+                  const visible = visibleByRecipe[r._id] || [];
+                  const hidden = (r.ingredienti?.length || 0) - visible.length;
+                  if (visible.length === 0) {
+                    return (
+                      <Text style={styles.allCovered}>
+                        {t('cart.allCovered')}
+                      </Text>
+                    );
+                  }
                   return (
-                    <Pressable key={i} style={styles.ing} onPress={() => toggleItem(key)}>
-                      <View style={styles.ingLeft}>
-                        <View style={[styles.check, done && styles.checkDone]}>
-                          {done && <Ionicons name="checkmark" size={12} color="white" />}
-                        </View>
-                        <Text style={[styles.ingName, done && styles.ingDone]}>{ing.nome}</Text>
-                      </View>
-                      <Text style={[styles.ingQty, done && styles.ingDone]}>{ing.quantita}</Text>
-                    </Pressable>
+                    <>
+                      {visible.map(({ ing, i }) => {
+                        const key = `${r._id}-${i}`;
+                        const done = !!checkedItems[key];
+                        return (
+                          <Pressable key={i} style={styles.ing} onPress={() => toggleItem(key)}>
+                            <View style={styles.ingLeft}>
+                              <View style={[styles.check, done && styles.checkDone]}>
+                                {done && <Ionicons name="checkmark" size={12} color="white" />}
+                              </View>
+                              <Text style={[styles.ingName, done && styles.ingDone]}>{ing.nome}</Text>
+                            </View>
+                            <Text style={[styles.ingQty, done && styles.ingDone]}>{ing.quantita}</Text>
+                          </Pressable>
+                        );
+                      })}
+                      {hidden > 0 && (
+                        <Text style={styles.hiddenNote}>
+                          {t('cart.hiddenItems', { count: hidden })}
+                        </Text>
+                      )}
+                    </>
                   );
-                })}
+                })()}
               </View>
             </View>
           ))}
@@ -149,4 +202,6 @@ const styles = StyleSheet.create({
   ingName: { color: colors.text, fontSize: 14, flex: 1 },
   ingQty: { color: colors.accent, fontSize: 13, fontWeight: '600' },
   ingDone: { opacity: 0.4, textDecorationLine: 'line-through' },
+  hiddenNote: { color: colors.text3, fontSize: 11, fontStyle: 'italic', marginTop: 8 },
+  allCovered: { color: colors.green, fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 6 },
 });

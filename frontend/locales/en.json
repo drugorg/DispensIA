@@ -69,6 +69,9 @@
     "progress": "SHOPPING PROGRESS",
     "done": "✓ All done!",
     "counter": "{{checked}}/{{total}} items",
+    "hiddenItems_one": "{{count}} item already checked elsewhere",
+    "hiddenItems_other": "{{count}} items already checked elsewhere",
+    "allCovered": "✓ All ingredients are already in your list",
     "empty": {
       "title": "List is empty",
       "sub": "Open a recipe from the Vault and tap \"Add to shopping list\""
@@ -76,9 +79,10 @@
   },
   "recipe": {
     "notFound": "Recipe not found",
-    "pantry": "IN PANTRY",
-    "allReady": "✓ All ready!",
-    "hint": "💡 Tap ingredients you already have to cross them off.",
+    "progress": "PROGRESS",
+    "allDone": "✓ Recipe complete!",
+    "byAuthor": "by {{author}}",
+    "stepsCounter": "{{done}}/{{total}} steps",
     "ingredients": "INGREDIENTS",
     "preparation": "PREPARATION",
     "portions": "SERVINGS",
@@ -102,9 +106,23 @@
     "info": "Information",
     "privacy": "Privacy & Data",
     "tos": "Terms of service",
+    "tutorial": "How to share from TikTok / Instagram",
     "logout": "Sign out",
     "logoutConfirm": "Are you sure you want to sign out?",
-    "version": "DispensIA v1.0.0 · made with ❤️ and AI"
+    "version": "DispensIA v1.0.0"
+  },
+  "tutorial": {
+    "skip": "Skip",
+    "next": "Next",
+    "start": "Let's go!",
+    "step1Title": "Find a video",
+    "step1Sub": "Open TikTok or Instagram and find a recipe that inspires you.",
+    "step2Title": "Tap Share",
+    "step2Sub": "Below the video tap the \"Share\" button (the arrow icon).",
+    "step3Title": "Choose \"More\"",
+    "step3Sub": "In the share menu scroll and tap \"More\" or \"Other\".",
+    "step4Title": "Pick DispensIA",
+    "step4Sub": "In the apps list pick DispensIA: your recipe will be extracted in seconds."
   },
   "login": {
     "tagline": "Videos → recipes in seconds",

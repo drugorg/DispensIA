@@ -115,11 +115,15 @@ def _fetch_tiktok_via_tikwm(clean_url: str) -> dict | None:
         ).json()
         if 'data' in res and 'play' in res['data']:
             d = res['data']
+            author_obj = d.get('author') or {}
+            author_handle = author_obj.get('unique_id') or ''
+            author_name = author_obj.get('nickname') or ''
             return {
                 'video_url': d['play'],
                 'thumb_url': d.get('cover', ''),
                 'desc': d.get('title', ''),
                 'has_video': True,
+                'author': f"@{author_handle}" if author_handle else (author_name or ''),
                 'source': 'tikwm',
             }
     except Exception as e:
@@ -148,11 +152,18 @@ def _fetch_via_ytdlp(clean_url: str) -> dict | None:
  
         info = json.loads(result.stdout)
         video_url = info.get('url')
+        uploader_id = info.get('uploader_id') or info.get('channel_id') or ''
+        uploader_name = info.get('uploader') or info.get('channel') or ''
+        if uploader_id:
+            handle = uploader_id if uploader_id.startswith('@') else f"@{uploader_id}"
+        else:
+            handle = uploader_name
         return {
             'video_url': video_url,
             'thumb_url': info.get('thumbnail', ''),
             'desc': info.get('description') or info.get('title', '') or '',
             'has_video': bool(video_url),
+            'author': handle,
             'source': 'yt-dlp',
         }
     except HTTPException:
@@ -187,12 +198,26 @@ def _fetch_instagram_photo_post(clean_url: str) -> dict | None:
         img = og('image')
         if not desc:
             return None
- 
+
+        # Instagram og:title format: "Username on Instagram: ..."
+        title = og('title')
+        author = ''
+        if title:
+            m = re.match(r'^(.*?)\s+on\s+Instagram', title, re.IGNORECASE)
+            if m:
+                author = m.group(1).strip()
+        if not author:
+            # Fallback: try to extract username from URL path /username/p/... or /username/reel/...
+            path_parts = [p for p in urlparse(clean_url).path.split('/') if p]
+            if len(path_parts) >= 2 and path_parts[1] in ('p', 'reel', 'tv'):
+                author = f"@{path_parts[0]}"
+
         return {
             'video_url': None,
             'thumb_url': img,
             'desc': desc,
             'has_video': False,
+            'author': author,
             'source': 'og-tags',
         }
     except Exception as e:
@@ -314,11 +339,27 @@ def _system_combined(lang: str) -> str:
     lang_rule = _LANG_RULE.replace('"{lang}"', f'"{lang}"')
     ing_rule = _ING_RULE.replace('"{lang}"', f'"{lang}"')
     return (
-        f"Estrai la ricetta in JSON rigoroso: {{titolo, "
-        f"porzioni: <numero intero persone se menzionato esplicitamente altrimenti null>, "
-        f"ingredienti: [{{nome, quantita}}], preparazione: []}}. "
+        "Analizza testo e audio del video. "
+        f'Se contengono CHIARAMENTE una ricetta di cucina (con ingredienti riconoscibili), restituisci JSON: '
+        f'{{"has_recipe": true, "titolo": "...", '
+        f'"porzioni": <numero intero persone se menzionato esplicitamente altrimenti null>, '
+        f'"ingredienti": [{{"nome": "...", "quantita": "..."}}], "preparazione": ["..."]}}. '
         f'{lang_rule} {ing_rule} '
-        f"Sii conciso e ignora le chiacchiere."
+        f'Sii conciso e ignora le chiacchiere. '
+        f'Se il contenuto NON è una ricetta di cucina (es: vlog, recensione, comedy, sport, news), '
+        f'restituisci SOLO: {{"has_recipe": false}}.'
+    )
+
+
+def _system_steps_only(lang: str) -> str:
+    lang_rule = _LANG_RULE.replace('"{lang}"', f'"{lang}"')
+    return (
+        "Hai testo e audio di un video di cucina che descrive una ricetta. "
+        "Estrai SOLO il procedimento (i passi da seguire), in ordine cronologico, "
+        f'in JSON: {{"preparazione": ["passo 1", "passo 2", ...]}}. '
+        f'{lang_rule} '
+        "Ignora ingredienti e quantità (sono già noti). Ogni passo deve essere chiaro e azionabile. "
+        "Se non riesci a ricostruire un procedimento utile, restituisci: {\"preparazione\": []}."
     )
 
 
@@ -352,7 +393,7 @@ def extract_from_text(desc: str, lang: str = "it") -> dict | None:
     return None
  
  
-def extract_from_text_and_audio(desc: str, transcription: str, lang: str = "it") -> dict:
+def extract_from_text_and_audio(desc: str, transcription: str, lang: str = "it") -> dict | None:
     res = client_ai.chat.completions.create(
         model="gpt-4o-mini",
         response_format={"type": "json_object"},
@@ -361,7 +402,47 @@ def extract_from_text_and_audio(desc: str, transcription: str, lang: str = "it")
             {"role": "user", "content": f"Testo: {desc} | Audio: {transcription}"},
         ],
     )
-    return json.loads(res.choices[0].message.content)
+    data = json.loads(res.choices[0].message.content)
+    if data.get("has_recipe") is False:
+        return None
+    data.pop("has_recipe", None)
+    return data
+
+
+def extract_steps_from_text_and_audio(desc: str, transcription: str, lang: str = "it") -> list[str]:
+    res = client_ai.chat.completions.create(
+        model="gpt-4o-mini",
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": _system_steps_only(lang)},
+            {"role": "user", "content": f"Testo: {desc} | Audio: {transcription}"},
+        ],
+    )
+    data = json.loads(res.choices[0].message.content)
+    steps = data.get("preparazione") or []
+    return [s for s in steps if isinstance(s, str) and s.strip()]
+
+
+def transcribe_video(video_url: str, temp_video: str, temp_audio: str) -> str:
+    headers = {
+        'User-Agent': 'TikTok 26.2.3 rv:262318 (iPhone; iOS 14.4.2; sv_SE) Cronet'
+    }
+    video_data = requests.get(video_url, headers=headers, timeout=30).content
+    with open(temp_video, 'wb') as f:
+        f.write(video_data)
+
+    os.system(
+        f'ffmpeg -i {temp_video} -vn '
+        f'-af "silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-30dB,atempo=1.5" '
+        f'-b:a 64k {temp_audio} -y > /dev/null 2>&1'
+    )
+    audio_path = temp_audio if os.path.exists(temp_audio) else temp_video
+
+    with open(audio_path, "rb") as f:
+        return client_ai.audio.transcriptions.create(
+            model="whisper-1",
+            file=("audio.mp3", f, "audio/mpeg"),
+        ).text
  
  
 # =================================================================
@@ -372,13 +453,26 @@ _RATE_LIMIT_MSG = {
     "en": "You have reached the daily limit of {n} extractions. Try again tomorrow.",
 }
 
+_NOT_RECIPE_MSG = {
+    "it": "Questo video non sembra contenere una ricetta di cucina. Prova con un altro link.",
+    "en": "This video doesn't look like a cooking recipe. Try a different link.",
+}
+
+_NO_RECIPE_IN_DESC_MSG = {
+    "it": "Nessuna ricetta trovata nella descrizione di questo post. Prova con un Reel o un video.",
+    "en": "No recipe found in this post's description. Try a Reel or a video instead.",
+}
+
+
+def _msg(table: dict[str, str], lang: str, **kwargs) -> str:
+    return table.get(lang, table["en"]).format(**kwargs)
+
 async def check_rate_limit(user_id: str, lang: str) -> None:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     doc = await usage.find_one({"user_id": user_id, "date": today})
     count = (doc or {}).get("count", 0)
     if count >= DAILY_LIMIT:
-        msg = _RATE_LIMIT_MSG.get(lang, _RATE_LIMIT_MSG["en"]).format(n=DAILY_LIMIT)
-        raise HTTPException(status_code=429, detail=msg)
+        raise HTTPException(status_code=429, detail=_msg(_RATE_LIMIT_MSG, lang, n=DAILY_LIMIT))
     await usage.update_one(
         {"user_id": user_id, "date": today},
         {
@@ -430,6 +524,7 @@ async def extract_recipe(request: LinkRequest):
             thumb_url = metadata['thumb_url']
             desc = metadata['desc']
             has_video = metadata['has_video']
+            author = metadata.get('author') or ''
  
             print(">> Thumbnail...", flush=True)
             thumbnail_b64 = download_thumbnail_base64(thumb_url)
@@ -437,46 +532,43 @@ async def extract_recipe(request: LinkRequest):
             # 💡 PIANO A: solo testo
             print(">> PIANO A: analisi testo...", flush=True)
             parsed = extract_from_text(desc, lang)
- 
+
             if parsed:
                 print("🟢 Ricetta trovata nel testo!", flush=True)
+                # Se le istruzioni mancano nel testo ma c'è il video, integriamole.
+                if not parsed.get("preparazione") and has_video:
+                    print("🟡 Istruzioni assenti nel testo: integro dall'audio...", flush=True)
+                    transcription_text = transcribe_video(video_url, temp_video, temp_audio)
+                    steps = extract_steps_from_text_and_audio(desc, transcription_text, lang)
+                    if steps:
+                        parsed["preparazione"] = steps
+                        print(f"🟢 Aggiunti {len(steps)} passi dal video", flush=True)
+                    else:
+                        print("⚠️  Nessun passo ricavabile dall'audio", flush=True)
             elif not has_video:
                 raise HTTPException(
                     status_code=422,
-                    detail="Nessuna ricetta trovata nella descrizione di questo post. Prova con un Reel o un video."
+                    detail=_msg(_NO_RECIPE_IN_DESC_MSG, lang),
                 )
             else:
-                # 🔊 PIANO B: audio + testo
+                # 🔊 PIANO B: audio + testo (estrazione completa)
                 print("🟡 PIANO B: video + audio...", flush=True)
-                headers = {
-                    'User-Agent': 'TikTok 26.2.3 rv:262318 (iPhone; iOS 14.4.2; sv_SE) Cronet'
-                }
-                video_data = requests.get(video_url, headers=headers, timeout=30).content
-                with open(temp_video, 'wb') as f:
-                    f.write(video_data)
- 
-                os.system(
-                    f'ffmpeg -i {temp_video} -vn '
-                    f'-af "silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-30dB,atempo=1.5" '
-                    f'-b:a 64k {temp_audio} -y > /dev/null 2>&1'
-                )
-                audio_path = temp_audio if os.path.exists(temp_audio) else temp_video
- 
-                print(">> Whisper...", flush=True)
-                with open(audio_path, "rb") as f:
-                    transcription = client_ai.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=("audio.mp3", f, "audio/mpeg"),
-                    )
- 
+                transcription_text = transcribe_video(video_url, temp_video, temp_audio)
+
                 print(">> JSON finale...", flush=True)
-                parsed = extract_from_text_and_audio(desc, transcription.text, lang)
- 
+                parsed = extract_from_text_and_audio(desc, transcription_text, lang)
+                if parsed is None:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=_msg(_NOT_RECIPE_MSG, lang),
+                    )
+
             parsed = _normalize_parsed(parsed, lang)
             parsed["source_url"] = clean_url
             parsed["thumbnail"] = thumbnail_b64
             parsed["platform"] = platform
             parsed["lang"] = lang
+            parsed["author"] = author
             result = await global_recipes.insert_one(parsed)
             recipe_id = result.inserted_id
  
