@@ -14,7 +14,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr"
       }
     },
     "simulator": {
@@ -24,7 +25,8 @@
         "simulator": true
       },
       "env": {
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr"
       }
     },
     "preview": {
@@ -34,14 +36,16 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr"
       }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr"
       }
     }
   },
