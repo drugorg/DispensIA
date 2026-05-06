@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { colors } from '../lib/theme';
+import { initPurchases, logoutPurchases } from '../lib/purchases';
 
 const queryClient = new QueryClient();
 const CLERK_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
@@ -23,7 +24,7 @@ if (__DEV__) {
 }
 
 function AuthGate() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const router = useRouter();
   const segments = useSegments();
   const { hasShareIntent } = useShareIntentContext();
@@ -40,6 +41,14 @@ function AuthGate() {
       router.push('/(tabs)/add');
     }
   }, [isLoaded, isSignedIn, segments, hasShareIntent]);
+
+  useEffect(() => {
+    if (isSignedIn && userId) {
+      initPurchases(userId).catch(() => {});
+    } else if (!isSignedIn) {
+      logoutPurchases().catch(() => {});
+    }
+  }, [isSignedIn, userId]);
 
   return null;
 }
@@ -77,6 +86,13 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="tutorial"
+              options={{
+                presentation: 'modal',
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="paywall"
               options={{
                 presentation: 'modal',
                 headerShown: false,

@@ -6,11 +6,13 @@ import { View, Text, Pressable, StyleSheet, ScrollView, Alert } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/theme';
+import { usePurchasesStore } from '../../lib/purchases';
 
 export default function SettingsScreen() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const { t } = useTranslation();
+  const isPremium = usePurchasesStore((s) => s.isPremium);
 
   const handleSignOut = () => {
     Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [
@@ -73,6 +75,28 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        <Pressable
+          style={[styles.card, styles.premiumCard, isPremium && styles.premiumCardActive]}
+          onPress={() => router.push('/paywall' as any)}
+        >
+          <View style={styles.premiumIcon}>
+            <Ionicons
+              name={isPremium ? 'checkmark-circle' : 'sparkles'}
+              size={24}
+              color={isPremium ? colors.green : colors.accent}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.premiumTitle}>
+              {isPremium ? t('paywall.active') : t('paywall.title')}
+            </Text>
+            <Text style={styles.premiumSub}>
+              {isPremium ? t('paywall.activeSub') : t('paywall.subtitle')}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.text3} />
+        </Pressable>
+
         <View style={styles.card}>
           {menuItems.map((item, i) => (
             <Pressable
@@ -106,6 +130,24 @@ const styles = StyleSheet.create({
   titleWrap: { paddingHorizontal: 20, paddingBottom: 24 },
   title: { fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -1 },
   card: { backgroundColor: colors.bg2, borderWidth: 1, borderColor: colors.border, borderRadius: 18, overflow: 'hidden' },
+  premiumCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderColor: 'rgba(255,107,53,0.4)',
+  },
+  premiumCardActive: { borderColor: 'rgba(48,217,104,0.4)' },
+  premiumIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,107,53,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  premiumTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  premiumSub: { color: colors.text2, fontSize: 12, marginTop: 2, lineHeight: 16 },
   avatar: { width: 52, height: 52, borderRadius: 14 },
   name: { color: colors.text, fontSize: 16, fontWeight: '700' },
   email: { color: colors.text2, fontSize: 13, marginTop: 2 },
