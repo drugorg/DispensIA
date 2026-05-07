@@ -18,8 +18,8 @@ import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases
 import { fetchCurrentOffering, purchase, restore, usePurchasesStore } from '../lib/purchases';
 import { colors } from '../lib/theme';
 
-const TERMS_URL = 'https://dispensia.app/legal?page=tos';
-const PRIVACY_URL = 'https://dispensia.app/legal?page=privacy';
+const TERMS_URL = 'https://dispensia.app/terms';
+const PRIVACY_URL = 'https://dispensia.app/privacy';
 
 export default function PaywallScreen() {
   const { t } = useTranslation();
