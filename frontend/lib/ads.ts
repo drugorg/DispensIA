@@ -83,8 +83,9 @@ function preloadInterstitial(): void {
   }
 }
 
-export function showInterstitial(): void {
-  if (!initialized || !interstitial || !interstitialLoaded) return;
+export async function showInterstitial(): Promise<void> {
+  const ok = await ensureInitialized();
+  if (!ok || !interstitial || !interstitialLoaded) return;
   try {
     interstitial.show();
   } catch (e) {
@@ -93,8 +94,9 @@ export function showInterstitial(): void {
 }
 
 export function showRewarded(): Promise<{ earned: boolean }> {
-  return new Promise((resolve) => {
-    if (!initialized) {
+  return new Promise(async (resolve) => {
+    const ok = await ensureInitialized();
+    if (!ok) {
       resolve({ earned: false });
       return;
     }
