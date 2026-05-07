@@ -10,6 +10,7 @@ import json
 import base64
 import re
 import requests
+import httpx
 import subprocess
 from urllib.parse import urlparse
 from PIL import Image
@@ -39,7 +40,13 @@ global_recipes = db.global_recipes
 user_vaults = db.user_vaults
 usage = db.usage
 
-DAILY_LIMIT = int(os.getenv("DAILY_EXTRACT_LIMIT", "10"))
+FREE_DAILY_LIMIT = int(os.getenv("FREE_DAILY_LIMIT", "5"))
+PREMIUM_DAILY_LIMIT = int(os.getenv("PREMIUM_DAILY_LIMIT", "20"))
+
+REVENUECAT_SECRET = os.getenv("REVENUECAT_SECRET_KEY")
+REVENUECAT_PROJECT_ID = os.getenv("REVENUECAT_PROJECT_ID")
+RC_BASE_URL = "https://api.revenuecat.com/v2"
+PREMIUM_ENTITLEMENT = "premium"
 
 client_ai = openai.OpenAI(api_key=OPENAI_KEY)
 
@@ -463,16 +470,55 @@ _NO_RECIPE_IN_DESC_MSG = {
     "en": "No recipe found in this post's description. Try a Reel or a video instead.",
 }
 
+_PREMIUM_REQUIRED_AUDIO_MSG = {
+    "it": "Questa ricetta non è nella descrizione del video. Passa a Premium per estrarla automaticamente dall'audio.",
+    "en": "This recipe is not in the video description. Upgrade to Premium to extract it automatically from the audio.",
+}
+
 
 def _msg(table: dict[str, str], lang: str, **kwargs) -> str:
     return table.get(lang, table["en"]).format(**kwargs)
 
-async def check_rate_limit(user_id: str, lang: str) -> None:
+
+# =================================================================
+# 💎 ENTITLEMENT CHECK (RevenueCat)
+# =================================================================
+async def is_premium(user_id: str) -> bool:
+    """Check if user has active premium entitlement via RevenueCat V2 REST API.
+    Returns False if RC unconfigured or any error (fail-safe to free tier)."""
+    if not REVENUECAT_SECRET or not REVENUECAT_PROJECT_ID or not user_id:
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                f"{RC_BASE_URL}/projects/{REVENUECAT_PROJECT_ID}/customers/{user_id}/active_entitlements",
+                headers={"Authorization": f"Bearer {REVENUECAT_SECRET}"},
+            )
+            if r.status_code == 404:
+                return False
+            r.raise_for_status()
+            data = r.json()
+            for item in data.get("items", []):
+                if item.get("lookup_key") == PREMIUM_ENTITLEMENT:
+                    return True
+            return False
+    except Exception as e:
+        print(f"⚠️  RevenueCat check failed for user {user_id}: {e}", flush=True)
+        return False
+
+
+def tier_limit(premium: bool) -> int:
+    return PREMIUM_DAILY_LIMIT if premium else FREE_DAILY_LIMIT
+
+
+async def consume_rate_limit(user_id: str, lang: str, premium: bool) -> None:
+    """Increment usage counter; raise 429 if tier-specific limit exceeded."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    limit = tier_limit(premium)
     doc = await usage.find_one({"user_id": user_id, "date": today})
     count = (doc or {}).get("count", 0)
-    if count >= DAILY_LIMIT:
-        raise HTTPException(status_code=429, detail=_msg(_RATE_LIMIT_MSG, lang, n=DAILY_LIMIT))
+    if count >= limit:
+        raise HTTPException(status_code=429, detail=_msg(_RATE_LIMIT_MSG, lang, n=limit))
     await usage.update_one(
         {"user_id": user_id, "date": today},
         {
@@ -483,6 +529,12 @@ async def check_rate_limit(user_id: str, lang: str) -> None:
     )
 
 
+async def get_usage_today(user_id: str) -> int:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    doc = await usage.find_one({"user_id": user_id, "date": today})
+    return (doc or {}).get("count", 0)
+
+
 # =================================================================
 # 🟢 ROTTE API
 # =================================================================
@@ -490,6 +542,20 @@ async def check_rate_limit(user_id: str, lang: str) -> None:
 @app.get("/")
 async def health_check():
     return {"status": "DispensIA API online"}
+
+
+@app.get("/users/me")
+async def get_user_status(user_id: str):
+    """Returns current user's tier and today's usage for paywall/UI gating."""
+    premium = await is_premium(user_id)
+    count = await get_usage_today(user_id)
+    limit = tier_limit(premium)
+    return {
+        "tier": "premium" if premium else "free",
+        "extractions_today": count,
+        "extractions_limit": limit,
+        "extractions_remaining": max(0, limit - count),
+    }
  
  
 @app.post("/extract")
@@ -517,7 +583,9 @@ async def extract_recipe(request: LinkRequest):
             print("🟢 già in database", flush=True)
             recipe_id = existing["_id"]
         else:
-            await check_rate_limit(user_id, lang)
+            premium = await is_premium(user_id)
+            print(f"💎 Tier: {'PREMIUM' if premium else 'FREE'}", flush=True)
+            await consume_rate_limit(user_id, lang, premium)
             print("🔴 Nuova clip. Recupero metadati...", flush=True)
             metadata = get_content_metadata(clean_url)
             video_url = metadata['video_url']
@@ -525,10 +593,10 @@ async def extract_recipe(request: LinkRequest):
             desc = metadata['desc']
             has_video = metadata['has_video']
             author = metadata.get('author') or ''
- 
+
             print(">> Thumbnail...", flush=True)
             thumbnail_b64 = download_thumbnail_base64(thumb_url)
- 
+
             # 💡 PIANO A: solo testo
             print(">> PIANO A: analisi testo...", flush=True)
             parsed = extract_from_text(desc, lang)
@@ -536,7 +604,8 @@ async def extract_recipe(request: LinkRequest):
             if parsed:
                 print("🟢 Ricetta trovata nel testo!", flush=True)
                 # Se le istruzioni mancano nel testo ma c'è il video, integriamole.
-                if not parsed.get("preparazione") and has_video:
+                # Solo per utenti Premium (Whisper costa).
+                if not parsed.get("preparazione") and has_video and premium:
                     print("🟡 Istruzioni assenti nel testo: integro dall'audio...", flush=True)
                     transcription_text = transcribe_video(video_url, temp_video, temp_audio)
                     steps = extract_steps_from_text_and_audio(desc, transcription_text, lang)
@@ -545,13 +614,22 @@ async def extract_recipe(request: LinkRequest):
                         print(f"🟢 Aggiunti {len(steps)} passi dal video", flush=True)
                     else:
                         print("⚠️  Nessun passo ricavabile dall'audio", flush=True)
+                elif not parsed.get("preparazione") and has_video and not premium:
+                    print("🆓 Free tier: skip audio (premium-only)", flush=True)
             elif not has_video:
                 raise HTTPException(
                     status_code=422,
                     detail=_msg(_NO_RECIPE_IN_DESC_MSG, lang),
                 )
+            elif not premium:
+                # Free tier non può fare estrazione audio: blocca con CTA upgrade
+                print("🆓 Free tier: nessuna ricetta nella caption + serve audio = upgrade required", flush=True)
+                raise HTTPException(
+                    status_code=403,
+                    detail=_msg(_PREMIUM_REQUIRED_AUDIO_MSG, lang),
+                )
             else:
-                # 🔊 PIANO B: audio + testo (estrazione completa)
+                # 🔊 PIANO B: audio + testo (estrazione completa) - solo Premium
                 print("🟡 PIANO B: video + audio...", flush=True)
                 transcription_text = transcribe_video(video_url, temp_video, temp_audio)
 
