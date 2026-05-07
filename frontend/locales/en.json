@@ -32,6 +32,7 @@
     "limitReachedSub": "You've used all your extractions today. Go Premium or try again tomorrow.",
     "upgradeBtn": "Upgrade to Premium",
     "premiumActive": "Premium active · {{used}}/{{limit}}",
+    "watchAdBonus": "Watch a short ad for +1 extraction",
     "howTitle": "HOW TO IMPORT A RECIPE",
     "method1Label": "Share from social",
     "method1Sub": "On the video, tap \"Share\" and choose DispensIA from the menu",

@@ -18,8 +18,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { ApiError, extractRecipe, fetchUserStatus } from '../../lib/api';
+import { ApiError, extractRecipe, fetchUserStatus, grantBonusExtraction } from '../../lib/api';
 import { colors } from '../../lib/theme';
+import { showInterstitial, showRewarded } from '../../lib/ads';
 
 function detectPlatform(url: string): 'tiktok' | 'instagram' | null {
   if (url.includes('tiktok.com')) return 'tiktok';
@@ -52,6 +53,10 @@ export default function AddScreen() {
       setUrl('');
       qc.invalidateQueries({ queryKey: ['recipes', user?.id] });
       qc.invalidateQueries({ queryKey: ['userStatus', user?.id] });
+      // Interstitial dopo estrazione: solo per utenti free
+      if (userStatus?.tier === 'free') {
+        setTimeout(() => showInterstitial(), 800);
+      }
       setTimeout(() => {
         setStatus('idle');
         router.push('/(tabs)');
@@ -59,7 +64,6 @@ export default function AddScreen() {
     },
     onError: (e: Error) => {
       qc.invalidateQueries({ queryKey: ['userStatus', user?.id] });
-      // Premium-required errors → push paywall
       if (e instanceof ApiError && (e.status === 403 || e.status === 429)) {
         setStatus('idle');
         router.push('/paywall' as any);
@@ -70,6 +74,21 @@ export default function AddScreen() {
       setTimeout(() => setStatus('idle'), 4000);
     },
   });
+
+  const [watchingAd, setWatchingAd] = useState(false);
+  const handleWatchAd = async () => {
+    setWatchingAd(true);
+    try {
+      const { earned } = await showRewarded();
+      if (earned) {
+        await grantBonusExtraction(user!.id);
+        await qc.invalidateQueries({ queryKey: ['userStatus', user?.id] });
+      }
+    } catch {}
+    finally {
+      setWatchingAd(false);
+    }
+  };
 
   useEffect(() => {
     if (hasShareIntent && shareIntent?.webUrl && user?.id && !mut.isPending) {
@@ -116,14 +135,32 @@ export default function AddScreen() {
                 </Text>
               </View>
             ) : userStatus.extractions_remaining === 0 ? (
-              <Pressable style={styles.quotaBannerEmpty} onPress={() => router.push('/paywall' as any)}>
-                <Ionicons name="alert-circle" size={16} color={colors.accent} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.quotaTitle}>{t('add.limitReached')}</Text>
-                  <Text style={styles.quotaSub}>{t('add.limitReachedSub')}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.accent} />
-              </Pressable>
+              <View style={{ marginHorizontal: 16, marginBottom: 16, gap: 10 }}>
+                <Pressable style={[styles.quotaBannerEmpty, { marginHorizontal: 0, marginBottom: 0 }]} onPress={() => router.push('/paywall' as any)}>
+                  <Ionicons name="alert-circle" size={16} color={colors.accent} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.quotaTitle}>{t('add.limitReached')}</Text>
+                    <Text style={styles.quotaSub}>{t('add.limitReachedSub')}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+                </Pressable>
+                {userStatus.can_get_bonus && (
+                  <Pressable
+                    style={[styles.adRewardBtn, watchingAd && { opacity: 0.5 }]}
+                    onPress={handleWatchAd}
+                    disabled={watchingAd}
+                  >
+                    {watchingAd ? (
+                      <ActivityIndicator color={colors.text} />
+                    ) : (
+                      <>
+                        <Ionicons name="play-circle-outline" size={18} color={colors.text} />
+                        <Text style={styles.adRewardText}>{t('add.watchAdBonus')}</Text>
+                      </>
+                    )}
+                  </Pressable>
+                )}
+              </View>
             ) : (
               <Pressable style={styles.quotaBanner} onPress={() => router.push('/paywall' as any)}>
                 <Ionicons name="time-outline" size={14} color={colors.text2} />
@@ -271,6 +308,18 @@ const styles = StyleSheet.create({
   quotaUpgrade: { color: colors.accent, fontSize: 12, fontWeight: '700' },
   quotaTitle: { color: colors.text, fontSize: 14, fontWeight: '700' },
   quotaSub: { color: colors.text2, fontSize: 12, marginTop: 2 },
+  adRewardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 44,
+    backgroundColor: colors.bg2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+  },
+  adRewardText: { color: colors.text, fontSize: 13, fontWeight: '600' },
   card: {
     backgroundColor: colors.bg2,
     borderWidth: 1,

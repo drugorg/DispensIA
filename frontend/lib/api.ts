@@ -23,6 +23,8 @@ export interface UserStatus {
   extractions_today: number;
   extractions_limit: number;
   extractions_remaining: number;
+  bonus_today: number;
+  can_get_bonus: boolean;
 }
 
 export class ApiError extends Error {
@@ -39,6 +41,18 @@ export async function fetchUserStatus(userId: string): Promise<UserStatus> {
   const res = await fetch(`${API_BASE}/users/me?user_id=${userId}`);
   if (!res.ok) throw new Error('Errore caricamento stato utente');
   return res.json();
+}
+
+export async function grantBonusExtraction(userId: string): Promise<UserStatus> {
+  const res = await fetch(`${API_BASE}/users/me/grant-bonus?user_id=${userId}`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, err.detail || 'Errore concessione bonus');
+  }
+  const data = await res.json();
+  return data as UserStatus;
 }
 
 export async function fetchRecipes(userId: string): Promise<Recipe[]> {

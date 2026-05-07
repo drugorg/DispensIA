@@ -74,6 +74,14 @@
         {
           "photosPermission": "Permetti a DispensIA di accedere alle foto per aggiungere un'immagine alla tua ricetta."
         }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "userTrackingUsageDescription": "Questa autorizzazione consente di mostrarti pubblicità più pertinenti, e di sostenere lo sviluppo di DispensIA."
+        }
       ]
     ],
     "experiments": {

@@ -42,6 +42,7 @@ usage = db.usage
 
 FREE_DAILY_LIMIT = int(os.getenv("FREE_DAILY_LIMIT", "5"))
 PREMIUM_DAILY_LIMIT = int(os.getenv("PREMIUM_DAILY_LIMIT", "20"))
+MAX_BONUS_PER_DAY = int(os.getenv("MAX_BONUS_PER_DAY", "1"))
 
 REVENUECAT_SECRET = os.getenv("REVENUECAT_SECRET_KEY")
 REVENUECAT_PROJECT_ID = os.getenv("REVENUECAT_PROJECT_ID")
@@ -520,13 +521,18 @@ def tier_limit(premium: bool) -> int:
 
 
 async def consume_rate_limit(user_id: str, lang: str, premium: bool) -> None:
-    """Increment usage counter; raise 429 if tier-specific limit exceeded."""
+    """Increment usage counter; raise 429 if tier-specific limit (+ bonus) exceeded."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    limit = tier_limit(premium)
+    base_limit = tier_limit(premium)
     doc = await usage.find_one({"user_id": user_id, "date": today})
     count = (doc or {}).get("count", 0)
-    if count >= limit:
-        raise HTTPException(status_code=429, detail=_msg(_RATE_LIMIT_MSG, lang, n=limit))
+    bonus = (doc or {}).get("bonus", 0)
+    effective_limit = base_limit + bonus
+    if count >= effective_limit:
+        raise HTTPException(
+            status_code=429,
+            detail=_msg(_RATE_LIMIT_MSG, lang, n=effective_limit),
+        )
     await usage.update_one(
         {"user_id": user_id, "date": today},
         {
@@ -537,10 +543,29 @@ async def consume_rate_limit(user_id: str, lang: str, premium: bool) -> None:
     )
 
 
-async def get_usage_today(user_id: str) -> int:
+async def get_usage_today(user_id: str) -> tuple[int, int]:
+    """Return (count, bonus) for today."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     doc = await usage.find_one({"user_id": user_id, "date": today})
-    return (doc or {}).get("count", 0)
+    return (doc or {}).get("count", 0), (doc or {}).get("bonus", 0)
+
+
+async def grant_bonus_extraction(user_id: str) -> bool:
+    """Grant +1 bonus extraction after rewarded ad. Returns True if granted, False if cap reached."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    doc = await usage.find_one({"user_id": user_id, "date": today})
+    bonus = (doc or {}).get("bonus", 0)
+    if bonus >= MAX_BONUS_PER_DAY:
+        return False
+    await usage.update_one(
+        {"user_id": user_id, "date": today},
+        {
+            "$inc": {"bonus": 1},
+            "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
+        },
+        upsert=True,
+    )
+    return True
 
 
 # =================================================================
@@ -556,13 +581,39 @@ async def health_check():
 async def get_user_status(user_id: str):
     """Returns current user's tier and today's usage for paywall/UI gating."""
     premium = await is_premium(user_id)
-    count = await get_usage_today(user_id)
-    limit = tier_limit(premium)
+    count, bonus = await get_usage_today(user_id)
+    base_limit = tier_limit(premium)
+    effective_limit = base_limit + bonus
     return {
         "tier": "premium" if premium else "free",
         "extractions_today": count,
-        "extractions_limit": limit,
-        "extractions_remaining": max(0, limit - count),
+        "extractions_limit": effective_limit,
+        "extractions_remaining": max(0, effective_limit - count),
+        "bonus_today": bonus,
+        "can_get_bonus": (not premium) and (bonus < MAX_BONUS_PER_DAY),
+    }
+
+
+@app.post("/users/me/grant-bonus")
+async def grant_bonus(user_id: str):
+    """Grant +1 extraction after a successfully watched rewarded ad.
+    Capped at MAX_BONUS_PER_DAY per user per day. Premium users don't need this."""
+    premium = await is_premium(user_id)
+    if premium:
+        # Premium ha già 20/giorno, non serve bonus
+        raise HTTPException(status_code=400, detail="Bonus not applicable to Premium users")
+    granted = await grant_bonus_extraction(user_id)
+    if not granted:
+        raise HTTPException(status_code=400, detail="Bonus limit already reached today")
+    count, bonus = await get_usage_today(user_id)
+    base_limit = tier_limit(premium)
+    return {
+        "granted": True,
+        "extractions_today": count,
+        "extractions_limit": base_limit + bonus,
+        "extractions_remaining": max(0, (base_limit + bonus) - count),
+        "bonus_today": bonus,
+        "can_get_bonus": bonus < MAX_BONUS_PER_DAY,
     }
  
  

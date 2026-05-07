@@ -32,6 +32,7 @@
     "limitReachedSub": "Hai usato tutte le estrazioni di oggi. Passa a Premium o riprova domani.",
     "upgradeBtn": "Scopri Premium",
     "premiumActive": "Premium attivo · {{used}}/{{limit}}",
+    "watchAdBonus": "Guarda un annuncio per +1 estrazione",
     "howTitle": "COME IMPORTARE UNA RICETTA",
     "method1Label": "Condividi dal social",
     "method1Sub": "Sul video, tocca \"Condividi\" e scegli DispensIA dal menu",

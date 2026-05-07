@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { colors } from '../lib/theme';
 import { initPurchases, logoutPurchases } from '../lib/purchases';
+import { initAds } from '../lib/ads';
 
 const queryClient = new QueryClient();
 const CLERK_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
@@ -45,6 +46,7 @@ function AuthGate() {
   useEffect(() => {
     if (isSignedIn && userId) {
       initPurchases(userId).catch(() => {});
+      initAds().catch(() => {});
     } else if (!isSignedIn) {
       logoutPurchases().catch(() => {});
     }
