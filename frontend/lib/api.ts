@@ -18,6 +18,29 @@ export interface Recipe {
   favorite?: boolean;
 }
 
+export interface UserStatus {
+  tier: 'free' | 'premium';
+  extractions_today: number;
+  extractions_limit: number;
+  extractions_remaining: number;
+}
+
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+  constructor(status: number, detail: string) {
+    super(detail);
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+export async function fetchUserStatus(userId: string): Promise<UserStatus> {
+  const res = await fetch(`${API_BASE}/users/me?user_id=${userId}`);
+  if (!res.ok) throw new Error('Errore caricamento stato utente');
+  return res.json();
+}
+
 export async function fetchRecipes(userId: string): Promise<Recipe[]> {
   const res = await fetch(`${API_BASE}/recipes?user_id=${userId}`);
   if (!res.ok) throw new Error('Errore nel caricamento ricette');
@@ -32,7 +55,7 @@ export async function extractRecipe(url: string, userId: string, lang = 'it') {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Impossibile estrarre la ricetta');
+    throw new ApiError(res.status, err.detail || 'Impossibile estrarre la ricetta');
   }
   return res.json();
 }

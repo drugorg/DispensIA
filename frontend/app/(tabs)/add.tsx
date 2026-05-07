@@ -1,5 +1,5 @@
 import { useUser } from '@clerk/clerk-expo';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
 import * as Clipboard from 'expo-clipboard';
@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { extractRecipe } from '../../lib/api';
+import { ApiError, extractRecipe, fetchUserStatus } from '../../lib/api';
 import { colors } from '../../lib/theme';
 
 function detectPlatform(url: string): 'tiktok' | 'instagram' | null {
@@ -38,18 +38,33 @@ export default function AddScreen() {
 
   const platform = detectPlatform(url);
 
+  const { data: userStatus } = useQuery({
+    queryKey: ['userStatus', user?.id],
+    queryFn: () => fetchUserStatus(user!.id),
+    enabled: !!user?.id,
+    staleTime: 30_000,
+  });
+
   const mut = useMutation({
     mutationFn: (urlToExtract: string) => extractRecipe(urlToExtract, user!.id, i18n.language),
     onSuccess: () => {
       setStatus('success');
       setUrl('');
       qc.invalidateQueries({ queryKey: ['recipes', user?.id] });
+      qc.invalidateQueries({ queryKey: ['userStatus', user?.id] });
       setTimeout(() => {
         setStatus('idle');
         router.push('/(tabs)');
       }, 1500);
     },
     onError: (e: Error) => {
+      qc.invalidateQueries({ queryKey: ['userStatus', user?.id] });
+      // Premium-required errors → push paywall
+      if (e instanceof ApiError && (e.status === 403 || e.status === 429)) {
+        setStatus('idle');
+        router.push('/paywall' as any);
+        return;
+      }
       setErrorMsg(e.message || t('add.error'));
       setStatus('error');
       setTimeout(() => setStatus('idle'), 4000);
@@ -91,6 +106,34 @@ export default function AddScreen() {
             <Text style={styles.title}>{t('add.title')}</Text>
             <Text style={styles.subtitle}>{t('add.subtitle')}</Text>
           </View>
+
+          {userStatus && (
+            userStatus.tier === 'premium' ? (
+              <View style={styles.quotaBanner}>
+                <Ionicons name="sparkles" size={14} color={colors.green} />
+                <Text style={[styles.quotaText, { color: colors.green }]}>
+                  {t('add.premiumActive', { used: userStatus.extractions_today, limit: userStatus.extractions_limit })}
+                </Text>
+              </View>
+            ) : userStatus.extractions_remaining === 0 ? (
+              <Pressable style={styles.quotaBannerEmpty} onPress={() => router.push('/paywall' as any)}>
+                <Ionicons name="alert-circle" size={16} color={colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.quotaTitle}>{t('add.limitReached')}</Text>
+                  <Text style={styles.quotaSub}>{t('add.limitReachedSub')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+              </Pressable>
+            ) : (
+              <Pressable style={styles.quotaBanner} onPress={() => router.push('/paywall' as any)}>
+                <Ionicons name="time-outline" size={14} color={colors.text2} />
+                <Text style={styles.quotaText}>
+                  {t('add.remainingFree', { remaining: userStatus.extractions_remaining })}
+                </Text>
+                <Text style={styles.quotaUpgrade}>{t('add.upgradeBtn')}</Text>
+              </Pressable>
+            )
+          )}
 
           <View style={styles.card}>
             <View style={styles.labelRow}>
@@ -198,6 +241,36 @@ const styles = StyleSheet.create({
   titleWrap: { paddingHorizontal: 20, paddingBottom: 24 },
   title: { fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -1 },
   subtitle: { color: colors.text2, fontSize: 14, marginTop: 4 },
+  quotaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: colors.bg2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  quotaBannerEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,107,53,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.4)',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  quotaText: { flex: 1, color: colors.text2, fontSize: 13, fontWeight: '600' },
+  quotaUpgrade: { color: colors.accent, fontSize: 12, fontWeight: '700' },
+  quotaTitle: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  quotaSub: { color: colors.text2, fontSize: 12, marginTop: 2 },
   card: {
     backgroundColor: colors.bg2,
     borderWidth: 1,
