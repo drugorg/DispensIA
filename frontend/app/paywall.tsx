@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Purchases from 'react-native-purchases';
 import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { fetchCurrentOffering, purchase, restore, usePurchasesStore } from '../lib/purchases';
 import { colors } from '../lib/theme';
@@ -29,44 +28,15 @@ export default function PaywallScreen() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [debug, setDebug] = useState<string>('initializing...');
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const lines: string[] = [];
-      lines.push(`platform=${Platform.OS}`);
-      const iosKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
-      const androidKey = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY;
-      lines.push(`iosKey=${iosKey ? iosKey.slice(0, 10) + '...' : 'MISSING'}`);
-      lines.push(`androidKey=${androidKey ? androidKey.slice(0, 10) + '...' : 'MISSING'}`);
-      try {
-        const isConf = await Purchases.isConfigured();
-        lines.push(`isConfigured=${isConf}`);
-      } catch (e: any) {
-        lines.push(`isConfiguredErr=${String(e?.message || e).slice(0, 80)}`);
-      }
-      try {
-        const offerings = await Purchases.getOfferings();
-        lines.push(`hasCurrent=${!!offerings.current}`);
-        lines.push(`allOfferings=${Object.keys(offerings.all).join(',') || 'none'}`);
-        if (offerings.current) {
-          lines.push(`currentId=${offerings.current.identifier}`);
-          lines.push(`packages=${offerings.current.availablePackages.length}`);
-        }
-        if (!cancelled) {
-          setOffering(offerings.current);
-          if (!offerings.current) setError(t('paywall.errorOffering'));
-        }
-      } catch (e: any) {
-        const msg = String(e?.message || e).slice(0, 200);
-        lines.push(`getOfferingsErr=${msg}`);
-        if (!cancelled) setError(msg || t('paywall.errorOffering'));
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setDebug(lines.join('\n'));
-        }
+      const o = await fetchCurrentOffering();
+      if (!cancelled) {
+        setOffering(o);
+        setLoading(false);
+        if (!o) setError(t('paywall.errorOffering'));
       }
     })();
     return () => {
@@ -222,11 +192,6 @@ export default function PaywallScreen() {
               <Pressable onPress={() => Linking.openURL(PRIVACY_URL)} hitSlop={8}>
                 <Text style={styles.legalLink}>{t('paywall.privacy')}</Text>
               </Pressable>
-            </View>
-
-            <View style={styles.debugBox}>
-              <Text style={styles.debugTitle}>DEBUG (rimuoveremo dopo)</Text>
-              <Text style={styles.debugText} selectable>{debug}</Text>
             </View>
           </>
         )}
@@ -394,15 +359,4 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   manageBtnText: { color: colors.text2, fontSize: 13, fontWeight: '600' },
-  debugBox: {
-    width: '100%',
-    marginTop: 24,
-    padding: 12,
-    backgroundColor: 'rgba(255,200,0,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,200,0,0.3)',
-    borderRadius: 10,
-  },
-  debugTitle: { color: colors.text2, fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
-  debugText: { color: colors.text2, fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', lineHeight: 16 },
 });
