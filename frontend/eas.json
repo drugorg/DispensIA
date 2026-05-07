@@ -15,7 +15,8 @@
       },
       "env": {
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ",
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr"
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XOsebPczBDnxCzjMbDhxUCZAIiC"
       }
     },
     "simulator": {
@@ -26,7 +27,8 @@
       },
       "env": {
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ",
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr"
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XOsebPczBDnxCzjMbDhxUCZAIiC"
       }
     },
     "preview": {
@@ -37,7 +39,8 @@
       },
       "env": {
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ",
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr"
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XOsebPczBDnxCzjMbDhxUCZAIiC"
       }
     },
     "production": {
@@ -45,7 +48,8 @@
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGlzcGVuc2lhLmFwcCQ",
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr"
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_ELkJvolSEjCdUjfhXbJrgNeydZr",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XOsebPczBDnxCzjMbDhxUCZAIiC"
       }
     }
   },
