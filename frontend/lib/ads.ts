@@ -19,25 +19,49 @@ const REWARDED_ID =
     : process.env.EXPO_PUBLIC_ADMOB_REWARDED_ANDROID) || TestIds.REWARDED;
 
 let initialized = false;
+let initPromise: Promise<boolean> | null = null;
 let interstitial: InterstitialAd | null = null;
 let interstitialLoaded = false;
 
 const REQUEST_OPTS = { requestNonPersonalizedAdsOnly: true };
 
-export async function initAds(): Promise<void> {
-  if (initialized) return;
-  try {
-    await mobileAds().setRequestConfiguration({
-      maxAdContentRating: MaxAdContentRating.G,
-      tagForChildDirectedTreatment: false,
-      tagForUnderAgeOfConsent: false,
-    });
-    await mobileAds().initialize();
-    initialized = true;
-    preloadInterstitial();
-  } catch (e) {
-    if (__DEV__) console.warn('[Ads] init failed', e);
+/**
+ * Init lazy: chiamata SOLO quando serve mostrare un ad.
+ * Se chiamata all'avvio dell'app può causare crash su alcune build/device
+ * iOS quando il SDK AdMob non riesce a inizializzarsi correttamente
+ * (es. SKAdNetworkItems mancanti, conflitto con altri SDK, ecc.).
+ */
+async function ensureInitialized(): Promise<boolean> {
+  if (initialized) return true;
+  if (!initPromise) {
+    initPromise = (async () => {
+      try {
+        await mobileAds().setRequestConfiguration({
+          maxAdContentRating: MaxAdContentRating.G,
+          tagForChildDirectedTreatment: false,
+          tagForUnderAgeOfConsent: false,
+        });
+        await mobileAds().initialize();
+        initialized = true;
+        try {
+          preloadInterstitial();
+        } catch (e) {
+          if (__DEV__) console.warn('[Ads] preload failed', e);
+        }
+        return true;
+      } catch (e) {
+        if (__DEV__) console.warn('[Ads] init failed', e);
+        initPromise = null; // permetti retry su prossima chiamata
+        return false;
+      }
+    })();
   }
+  return initPromise;
+}
+
+/** No-op: kept for backward compat. Init avviene lazy alla prima ad. */
+export async function initAds(): Promise<void> {
+  // Volutamente vuoto: niente init all'avvio (rischio crash).
 }
 
 function preloadInterstitial(): void {
