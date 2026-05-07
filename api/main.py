@@ -45,8 +45,12 @@ PREMIUM_DAILY_LIMIT = int(os.getenv("PREMIUM_DAILY_LIMIT", "20"))
 
 REVENUECAT_SECRET = os.getenv("REVENUECAT_SECRET_KEY")
 REVENUECAT_PROJECT_ID = os.getenv("REVENUECAT_PROJECT_ID")
+# RC V2 active_entitlements endpoint returns opaque entitlement_id (es. "entlce8533f345"),
+# non il lookup_key human-friendly ("premium"). Per evitare di richiedere il permesso
+# project_configuration:entitlements:read alla chiave secret, hardcodo l'ID via env.
+REVENUECAT_PREMIUM_ENTITLEMENT_ID = os.getenv("REVENUECAT_PREMIUM_ENTITLEMENT_ID", "")
 RC_BASE_URL = "https://api.revenuecat.com/v2"
-PREMIUM_ENTITLEMENT = "premium"
+PREMIUM_ENTITLEMENT_LOOKUP = "premium"
 
 client_ai = openai.OpenAI(api_key=OPENAI_KEY)
 
@@ -499,7 +503,11 @@ async def is_premium(user_id: str) -> bool:
             r.raise_for_status()
             data = r.json()
             for item in data.get("items", []):
-                if item.get("lookup_key") == PREMIUM_ENTITLEMENT:
+                # V2 ritorna entitlement_id opaco: match esatto via env var.
+                if REVENUECAT_PREMIUM_ENTITLEMENT_ID and item.get("entitlement_id") == REVENUECAT_PREMIUM_ENTITLEMENT_ID:
+                    return True
+                # Fallback: alcuni endpoint includono anche lookup_key.
+                if item.get("lookup_key") == PREMIUM_ENTITLEMENT_LOOKUP:
                     return True
             return False
     except Exception as e:
