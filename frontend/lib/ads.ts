@@ -10,6 +10,8 @@
  * configurazione corretta (SKAdNetworkItems, ATT prompt, ecc.).
  */
 
+export const ADS_ENABLED = false;
+
 export async function initAds(): Promise<void> {
   // no-op
 }

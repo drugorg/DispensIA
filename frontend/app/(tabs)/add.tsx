@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ApiError, extractRecipe, fetchUserStatus, grantBonusExtraction } from '../../lib/api';
 import { colors } from '../../lib/theme';
-import { showInterstitial, showRewarded } from '../../lib/ads';
+import { ADS_ENABLED, showInterstitial, showRewarded } from '../../lib/ads';
 
 function detectPlatform(url: string): 'tiktok' | 'instagram' | null {
   if (url.includes('tiktok.com')) return 'tiktok';
@@ -144,7 +144,7 @@ export default function AddScreen() {
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={colors.accent} />
                 </Pressable>
-                {userStatus.can_get_bonus && (
+                {ADS_ENABLED && userStatus.can_get_bonus && (
                   <Pressable
                     style={[styles.adRewardBtn, watchingAd && { opacity: 0.5 }]}
                     onPress={handleWatchAd}
