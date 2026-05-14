@@ -91,6 +91,14 @@ export async function deleteRecipe(recipeId: string, userId: string) {
   return res.json();
 }
 
+export async function deleteAccount(userId: string) {
+  const res = await fetch(`${API_BASE}/users/me/account?user_id=${userId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new ApiError(res.status, 'Errore nella cancellazione account');
+  return res.json();
+}
+
 export async function createRecipe(
   userId: string,
   data: {

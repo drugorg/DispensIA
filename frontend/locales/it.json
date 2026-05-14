@@ -116,6 +116,12 @@
     "tutorial": "Come condividere da TikTok / Instagram",
     "logout": "Esci",
     "logoutConfirm": "Sei sicuro di voler uscire?",
+    "deleteAccount": "Elimina account",
+    "deleteAccountConfirm": "Eliminando l'account perderai definitivamente tutte le ricette, la spesa e i contatori. Questa azione non è reversibile.",
+    "deleteAccountFinalTitle": "Conferma definitiva",
+    "deleteAccountFinalBody": "Tutto il tuo contenuto verrà cancellato. Confermi?",
+    "deleteAccountFinalConfirm": "Sì, elimina",
+    "deleteAccountError": "Errore nella cancellazione, riprova.",
     "version": "DispensIA v1.0.0"
   },
   "paywall": {

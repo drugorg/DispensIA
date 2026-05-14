@@ -594,6 +594,19 @@ async def get_user_status(user_id: str):
     }
 
 
+@app.delete("/users/me/account")
+async def delete_account(user_id: str):
+    """Permanently delete all user data (vault links + usage history).
+    Required by Apple Guideline 5.1.1(v). The Clerk user record itself
+    must be deleted separately by the client via user.delete()."""
+    vault_result = await user_vaults.delete_many({"user_id": user_id})
+    usage_result = await usage.delete_many({"user_id": user_id})
+    return {
+        "deleted_vault_entries": vault_result.deleted_count,
+        "deleted_usage_records": usage_result.deleted_count,
+    }
+
+
 @app.post("/users/me/grant-bonus")
 async def grant_bonus(user_id: str):
     """Grant +1 extraction after a successfully watched rewarded ad.

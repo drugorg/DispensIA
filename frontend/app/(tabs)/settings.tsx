@@ -1,24 +1,66 @@
 import { useUser, useClerk } from '@clerk/clerk-expo';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, Pressable, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/theme';
 import { usePurchasesStore } from '../../lib/purchases';
+import { deleteAccount } from '../../lib/api';
 
 export default function SettingsScreen() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const { t } = useTranslation();
   const isPremium = usePurchasesStore((s) => s.isPremium);
+  const [deleting, setDeleting] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('settings.logout'), style: 'destructive', onPress: () => signOut() },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('settings.deleteAccount'),
+      t('settings.deleteAccountConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.deleteAccount'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              t('settings.deleteAccountFinalTitle'),
+              t('settings.deleteAccountFinalBody'),
+              [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                  text: t('settings.deleteAccountFinalConfirm'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    if (!user?.id) return;
+                    setDeleting(true);
+                    try {
+                      await deleteAccount(user.id);
+                      await user.delete();
+                      await signOut();
+                    } catch (e: any) {
+                      setDeleting(false);
+                      Alert.alert(t('common.error'), e?.message || t('settings.deleteAccountError'));
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
   };
 
   const menuItems = [
@@ -115,6 +157,18 @@ export default function SettingsScreen() {
 
         <Pressable style={[styles.card, { padding: 16, alignItems: 'center' }]} onPress={handleSignOut}>
           <Text style={{ color: colors.red, fontWeight: '700', fontSize: 15 }}>{t('settings.logout')}</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.card, { padding: 16, alignItems: 'center', opacity: deleting ? 0.5 : 1 }]}
+          onPress={handleDeleteAccount}
+          disabled={deleting}
+        >
+          {deleting ? (
+            <ActivityIndicator color={colors.red} />
+          ) : (
+            <Text style={{ color: colors.red, fontWeight: '700', fontSize: 15 }}>{t('settings.deleteAccount')}</Text>
+          )}
         </Pressable>
 
         <Text style={styles.version}>{t('settings.version')}</Text>
