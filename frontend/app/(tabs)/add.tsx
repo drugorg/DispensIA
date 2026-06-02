@@ -83,6 +83,10 @@ export default function AddScreen() {
       if (earned) {
         await grantBonusExtraction(user!.id);
         await qc.invalidateQueries({ queryKey: ['userStatus', user?.id] });
+      } else {
+        setErrorMsg(t('add.adNotAvailable'));
+        setStatus('error');
+        setTimeout(() => setStatus('idle'), 4000);
       }
     } catch {}
     finally {

@@ -33,6 +33,7 @@
     "upgradeBtn": "Scopri Premium",
     "premiumActive": "Premium attivo · {{used}}/{{limit}}",
     "watchAdBonus": "Guarda un annuncio per +1 estrazione",
+    "adNotAvailable": "Nessun annuncio disponibile al momento, riprova più tardi.",
     "howTitle": "COME IMPORTARE UNA RICETTA",
     "method1Label": "Condividi dal social",
     "method1Sub": "Sul video, tocca \"Condividi\" e scegli DispensIA dal menu",
