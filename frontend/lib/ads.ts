@@ -5,6 +5,7 @@ import mobileAds, {
   MaxAdContentRating,
   RewardedAd,
   RewardedAdEventType,
+  RewardedInterstitialAd,
   TestIds,
 } from 'react-native-google-mobile-ads';
 
@@ -20,6 +21,12 @@ const REWARDED_ID =
     ? process.env.EXPO_PUBLIC_ADMOB_REWARDED_IOS
     : process.env.EXPO_PUBLIC_ADMOB_REWARDED_ANDROID) || TestIds.REWARDED;
 
+const REWARDED_INTERSTITIAL_ID =
+  (Platform.OS === 'ios'
+    ? process.env.EXPO_PUBLIC_ADMOB_REWARDED_INTERSTITIAL_IOS
+    : process.env.EXPO_PUBLIC_ADMOB_REWARDED_INTERSTITIAL_ANDROID) ||
+  TestIds.REWARDED_INTERSTITIAL;
+
 let initialized = false;
 let initPromise: Promise<boolean> | null = null;
 let interstitial: InterstitialAd | null = null;
@@ -27,6 +34,9 @@ let interstitialLoaded = false;
 let rewardedInstance: RewardedAd | null = null;
 let rewardedReady = false;
 let rewardedLoading = false;
+let rewardedIntInstance: RewardedInterstitialAd | null = null;
+let rewardedIntReady = false;
+let rewardedIntLoading = false;
 
 const REQUEST_OPTS = { requestNonPersonalizedAdsOnly: true };
 
@@ -53,6 +63,11 @@ async function ensureInitialized(): Promise<boolean> {
           preloadRewarded();
         } catch (e) {
           if (__DEV__) console.warn('[Ads] rewarded preload failed', e);
+        }
+        try {
+          preloadRewardedInterstitial();
+        } catch (e) {
+          if (__DEV__) console.warn('[Ads] rewarded-int preload failed', e);
         }
         return true;
       } catch (e) {
@@ -89,27 +104,28 @@ function preloadInterstitial(): void {
 }
 
 function attachAndShowRewarded(
-  ad: RewardedAd,
+  ad: RewardedAd | RewardedInterstitialAd,
   onEarned: () => void,
   onClosed: () => void,
   onError: () => void,
+  reloadAfter: () => void,
 ): void {
   ad.addAdEventListener(RewardedAdEventType.EARNED_REWARD, onEarned);
   ad.addAdEventListener(AdEventType.CLOSED, () => {
     onClosed();
-    setTimeout(() => preloadRewarded(), 500);
+    setTimeout(reloadAfter, 500);
   });
   ad.addAdEventListener(AdEventType.ERROR, (e) => {
     if (__DEV__) console.warn('[Ads] rewarded show error', e);
     onError();
-    setTimeout(() => preloadRewarded(), 500);
+    setTimeout(reloadAfter, 500);
   });
   try {
     ad.show();
   } catch (e) {
     if (__DEV__) console.warn('[Ads] rewarded show failed', e);
     onError();
-    setTimeout(() => preloadRewarded(), 500);
+    setTimeout(reloadAfter, 500);
   }
 }
 
@@ -140,6 +156,32 @@ function preloadRewarded(): void {
   }
 }
 
+function preloadRewardedInterstitial(): void {
+  if (rewardedIntLoading || rewardedIntReady) return;
+  rewardedIntLoading = true;
+  try {
+    const ad = RewardedInterstitialAd.createForAdRequest(REWARDED_INTERSTITIAL_ID, REQUEST_OPTS);
+    rewardedIntInstance = ad;
+    ad.addAdEventListener(AdEventType.LOADED, () => {
+      rewardedIntReady = true;
+      rewardedIntLoading = false;
+    });
+    ad.addAdEventListener(AdEventType.ERROR, (e) => {
+      if (__DEV__) console.warn('[Ads] rewarded-int preload error', e);
+      rewardedIntReady = false;
+      rewardedIntLoading = false;
+      rewardedIntInstance = null;
+      setTimeout(() => preloadRewardedInterstitial(), 60_000);
+    });
+    ad.load();
+  } catch (e) {
+    if (__DEV__) console.warn('[Ads] rewarded-int preload failed', e);
+    rewardedIntLoading = false;
+    rewardedIntReady = false;
+    rewardedIntInstance = null;
+  }
+}
+
 export async function showInterstitial(): Promise<void> {
   const ok = await ensureInitialized();
   if (!ok || !interstitial || !interstitialLoaded) return;
@@ -165,7 +207,7 @@ export function showRewarded(): Promise<{ earned: boolean }> {
 
     // Safety net schedulato PRIMA di qualsiasi await/throw: garantisce che la
     // promise risolva sempre, anche se ensureInitialized() o ad.load() lanciano.
-    const timeoutId = setTimeout(() => safeResolve({ earned: false }), 10000);
+    const timeoutId = setTimeout(() => safeResolve({ earned: false }), 12000);
 
     (async () => {
       try {
@@ -175,17 +217,38 @@ export function showRewarded(): Promise<{ earned: boolean }> {
           return;
         }
 
-        // Fast path: usa l'istanza precaricata se pronta.
+        // Priorità 1: Rewarded precaricato (eCPM più alto, ma fill basso su app nuove).
         if (rewardedReady && rewardedInstance) {
           const ad = rewardedInstance;
           rewardedInstance = null;
           rewardedReady = false;
-          attachAndShowRewarded(ad, () => { earned = true; }, () => safeResolve({ earned }), () => safeResolve({ earned: false }));
+          attachAndShowRewarded(
+            ad,
+            () => { earned = true; },
+            () => safeResolve({ earned }),
+            () => safeResolve({ earned: false }),
+            preloadRewarded,
+          );
           return;
         }
 
-        // Slow path: carica on-demand.
-        const ad = RewardedAd.createForAdRequest(REWARDED_ID, REQUEST_OPTS);
+        // Priorità 2: Rewarded Interstitial precaricato (fill rate più alto).
+        if (rewardedIntReady && rewardedIntInstance) {
+          const ad = rewardedIntInstance;
+          rewardedIntInstance = null;
+          rewardedIntReady = false;
+          attachAndShowRewarded(
+            ad,
+            () => { earned = true; },
+            () => safeResolve({ earned }),
+            () => safeResolve({ earned: false }),
+            preloadRewardedInterstitial,
+          );
+          return;
+        }
+
+        // Fallback: carica Rewarded Interstitial on-demand (preferito per fill).
+        const ad = RewardedInterstitialAd.createForAdRequest(REWARDED_INTERSTITIAL_ID, REQUEST_OPTS);
         ad.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => {
           earned = true;
         });
@@ -193,18 +256,18 @@ export function showRewarded(): Promise<{ earned: boolean }> {
           try {
             ad.show();
           } catch (e) {
-            if (__DEV__) console.warn('[Ads] rewarded show failed', e);
+            if (__DEV__) console.warn('[Ads] rewarded-int show failed', e);
             safeResolve({ earned: false });
           }
         });
         ad.addAdEventListener(AdEventType.CLOSED, () => {
           safeResolve({ earned });
-          setTimeout(() => preloadRewarded(), 500);
+          setTimeout(() => preloadRewardedInterstitial(), 500);
         });
         ad.addAdEventListener(AdEventType.ERROR, (e) => {
-          if (__DEV__) console.warn('[Ads] rewarded error', e);
+          if (__DEV__) console.warn('[Ads] rewarded-int on-demand error', e);
           safeResolve({ earned: false });
-          setTimeout(() => preloadRewarded(), 500);
+          setTimeout(() => preloadRewardedInterstitial(), 500);
         });
         ad.load();
       } catch (e) {
