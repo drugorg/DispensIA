@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ApiError, extractRecipe, fetchUserStatus, grantBonusExtraction } from '../../lib/api';
 import { colors } from '../../lib/theme';
-import { ADS_ENABLED, showInterstitial, showRewarded } from '../../lib/ads';
+import { ADS_ENABLED, getAdsDiagnostics, showInterstitial, showRewarded } from '../../lib/ads';
 
 function detectPlatform(url: string): 'tiktok' | 'instagram' | null {
   if (url.includes('tiktok.com')) return 'tiktok';
@@ -84,9 +84,15 @@ export default function AddScreen() {
         await grantBonusExtraction(user!.id);
         await qc.invalidateQueries({ queryKey: ['userStatus', user?.id] });
       } else {
-        setErrorMsg(t('add.adNotAvailable'));
+        const diag = getAdsDiagnostics();
+        const idTail = diag.rewardedIntId.split('/').pop() ?? diag.rewardedIntId;
+        const tag = diag.usingTestIds ? 'TEST-IDS' : `id:${idTail}`;
+        const errPart = diag.lastError
+          ? `${diag.lastError.source}:${diag.lastError.code ?? '?'}`
+          : 'no-error';
+        setErrorMsg(`${t('add.adNotAvailable')}\n[${tag} | ${errPart}]`);
         setStatus('error');
-        setTimeout(() => setStatus('idle'), 4000);
+        setTimeout(() => setStatus('idle'), 8000);
       }
     } catch {}
     finally {

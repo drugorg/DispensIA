@@ -38,6 +38,39 @@ let rewardedIntInstance: RewardedInterstitialAd | null = null;
 let rewardedIntReady = false;
 let rewardedIntLoading = false;
 
+type AdErrorSource =
+  | 'init'
+  | 'rewarded-preload'
+  | 'rewarded-show'
+  | 'rewarded-int-preload'
+  | 'rewarded-int-show'
+  | 'rewarded-int-on-demand';
+
+let lastAdError: { source: AdErrorSource; code?: string; message?: string } | null = null;
+
+function captureAdError(source: AdErrorSource, e: unknown): void {
+  const err = e as { code?: string | number; message?: string } | undefined;
+  lastAdError = {
+    source,
+    code: err?.code != null ? String(err.code) : undefined,
+    message: err?.message ?? (typeof e === 'string' ? e : undefined),
+  };
+}
+
+export function getAdsDiagnostics() {
+  const isTestRewarded = REWARDED_ID === TestIds.REWARDED;
+  const isTestRewardedInt = REWARDED_INTERSTITIAL_ID === TestIds.REWARDED_INTERSTITIAL;
+  return {
+    rewardedId: REWARDED_ID,
+    rewardedIntId: REWARDED_INTERSTITIAL_ID,
+    usingTestIds: isTestRewarded || isTestRewardedInt,
+    rewardedReady,
+    rewardedIntReady,
+    initialized,
+    lastError: lastAdError,
+  };
+}
+
 const REQUEST_OPTS = { requestNonPersonalizedAdsOnly: true };
 
 // Init lazy: NON al boot dell'app (causa crash iOS in passato). Parte alla
@@ -72,6 +105,7 @@ async function ensureInitialized(): Promise<boolean> {
         return true;
       } catch (e) {
         if (__DEV__) console.warn('[Ads] init failed', e);
+        captureAdError('init', e);
         initPromise = null;
         return false;
       }
@@ -117,6 +151,7 @@ function attachAndShowRewarded(
   });
   ad.addAdEventListener(AdEventType.ERROR, (e) => {
     if (__DEV__) console.warn('[Ads] rewarded show error', e);
+    captureAdError('rewarded-show', e);
     onError();
     setTimeout(reloadAfter, 500);
   });
@@ -124,6 +159,7 @@ function attachAndShowRewarded(
     ad.show();
   } catch (e) {
     if (__DEV__) console.warn('[Ads] rewarded show failed', e);
+    captureAdError('rewarded-show', e);
     onError();
     setTimeout(reloadAfter, 500);
   }
@@ -141,6 +177,7 @@ function preloadRewarded(): void {
     });
     ad.addAdEventListener(AdEventType.ERROR, (e) => {
       if (__DEV__) console.warn('[Ads] rewarded preload error', e);
+      captureAdError('rewarded-preload', e);
       rewardedReady = false;
       rewardedLoading = false;
       rewardedInstance = null;
@@ -168,6 +205,7 @@ function preloadRewardedInterstitial(): void {
     });
     ad.addAdEventListener(AdEventType.ERROR, (e) => {
       if (__DEV__) console.warn('[Ads] rewarded-int preload error', e);
+      captureAdError('rewarded-int-preload', e);
       rewardedIntReady = false;
       rewardedIntLoading = false;
       rewardedIntInstance = null;
@@ -257,6 +295,7 @@ export function showRewarded(): Promise<{ earned: boolean }> {
             ad.show();
           } catch (e) {
             if (__DEV__) console.warn('[Ads] rewarded-int show failed', e);
+            captureAdError('rewarded-int-show', e);
             safeResolve({ earned: false });
           }
         });
@@ -266,12 +305,14 @@ export function showRewarded(): Promise<{ earned: boolean }> {
         });
         ad.addAdEventListener(AdEventType.ERROR, (e) => {
           if (__DEV__) console.warn('[Ads] rewarded-int on-demand error', e);
+          captureAdError('rewarded-int-on-demand', e);
           safeResolve({ earned: false });
           setTimeout(() => preloadRewardedInterstitial(), 500);
         });
         ad.load();
       } catch (e) {
         if (__DEV__) console.warn('[Ads] rewarded flow failed', e);
+        captureAdError('rewarded-int-on-demand', e);
         safeResolve({ earned: false });
       }
     })();
