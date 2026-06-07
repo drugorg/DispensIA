@@ -2,14 +2,15 @@ import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchRecipes } from '../../lib/api';
+import { fetchRecipes, fetchUserStatus } from '../../lib/api';
 import { useCartStore } from '../../lib/cartStore';
 import { colors } from '../../lib/theme';
+import { maybeShowInterstitial } from '../../lib/ads';
 
 export default function CartScreen() {
   const { user } = useUser();
@@ -22,6 +23,20 @@ export default function CartScreen() {
     queryFn: () => fetchRecipes(user!.id),
     enabled: !!user?.id,
   });
+
+  const { data: userStatus } = useQuery({
+    queryKey: ['userStatus', user?.id],
+    queryFn: () => fetchUserStatus(user!.id),
+    enabled: !!user?.id,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (userStatus?.tier === 'free' && cartIds.length > 0) {
+      const t = setTimeout(() => maybeShowInterstitial(), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [userStatus?.tier]);
 
   const recipes = all.filter((r) => cartIds.includes(r._id));
 

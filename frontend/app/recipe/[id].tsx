@@ -27,9 +27,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchRecipes, updateRecipe } from '../../lib/api';
+import { fetchRecipes, fetchUserStatus, updateRecipe } from '../../lib/api';
 import { useCartStore } from '../../lib/cartStore';
 import { colors } from '../../lib/theme';
+import { maybeShowInterstitial } from '../../lib/ads';
 
 const MULTIPLIERS = [0.5, 1, 1.5, 2, 3];
 const MULTIPLIER_LABELS = ['½×', '1×', '1.5×', '2×', '3×'];
@@ -88,11 +89,27 @@ export default function RecipeDetail() {
     enabled: !!user?.id,
   });
 
+  const { data: userStatus } = useQuery({
+    queryKey: ['userStatus', user?.id],
+    queryFn: () => fetchUserStatus(user!.id),
+    enabled: !!user?.id,
+    staleTime: 30_000,
+  });
+
   const recipe = all.find((r) => r._id === id);
 
   useEffect(() => {
     if (recipe?.porzioni) setPersone(recipe.porzioni);
   }, [recipe?._id]);
+
+  useEffect(() => {
+    if (userStatus?.tier === 'free' && recipe) {
+      // Delay per non sovrapporsi all'animazione di apertura modale e dare
+      // tempo all'utente di leggere il titolo della ricetta.
+      const t = setTimeout(() => maybeShowInterstitial(), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [userStatus?.tier, recipe?._id]);
 
   const updateMut = useMutation({
     mutationFn: (d: typeof draft) => updateRecipe(recipe!._id, user!.id, d),

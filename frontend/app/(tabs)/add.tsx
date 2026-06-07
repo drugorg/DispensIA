@@ -18,9 +18,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { ApiError, extractRecipe, fetchUserStatus, grantBonusExtraction } from '../../lib/api';
+import { ApiError, extractRecipe, fetchUserStatus } from '../../lib/api';
 import { colors } from '../../lib/theme';
-import { ADS_ENABLED, getAdsDiagnostics, showInterstitial, showRewarded } from '../../lib/ads';
+import { showInterstitial } from '../../lib/ads';
 
 function detectPlatform(url: string): 'tiktok' | 'instagram' | null {
   if (url.includes('tiktok.com')) return 'tiktok';
@@ -48,15 +48,19 @@ export default function AddScreen() {
 
   const mut = useMutation({
     mutationFn: (urlToExtract: string) => extractRecipe(urlToExtract, user!.id, i18n.language),
+    onMutate: () => {
+      // Interstitial DURANTE estrazione: sfrutta il tempo morto dell'API call
+      // (10-30s) per mostrare l'ad. Solo free, leggero delay per non sovrapporsi
+      // all'animazione di submit.
+      if (userStatus?.tier === 'free') {
+        setTimeout(() => showInterstitial(), 300);
+      }
+    },
     onSuccess: () => {
       setStatus('success');
       setUrl('');
       qc.invalidateQueries({ queryKey: ['recipes', user?.id] });
       qc.invalidateQueries({ queryKey: ['userStatus', user?.id] });
-      // Interstitial dopo estrazione: solo per utenti free
-      if (userStatus?.tier === 'free') {
-        setTimeout(() => showInterstitial(), 800);
-      }
       setTimeout(() => {
         setStatus('idle');
         router.push('/(tabs)');
@@ -74,31 +78,6 @@ export default function AddScreen() {
       setTimeout(() => setStatus('idle'), 4000);
     },
   });
-
-  const [watchingAd, setWatchingAd] = useState(false);
-  const handleWatchAd = async () => {
-    setWatchingAd(true);
-    try {
-      const { earned } = await showRewarded();
-      if (earned) {
-        await grantBonusExtraction(user!.id);
-        await qc.invalidateQueries({ queryKey: ['userStatus', user?.id] });
-      } else {
-        const diag = getAdsDiagnostics();
-        const idTail = diag.rewardedIntId.split('/').pop() ?? diag.rewardedIntId;
-        const tag = diag.usingTestIds ? 'TEST-IDS' : `id:${idTail}`;
-        const errPart = diag.lastError
-          ? `${diag.lastError.source}:${diag.lastError.code ?? '?'}`
-          : 'no-error';
-        setErrorMsg(`${t('add.adNotAvailable')}\n[${tag} | ${errPart}]`);
-        setStatus('error');
-        setTimeout(() => setStatus('idle'), 8000);
-      }
-    } catch {}
-    finally {
-      setWatchingAd(false);
-    }
-  };
 
   useEffect(() => {
     if (hasShareIntent && shareIntent?.webUrl && user?.id && !mut.isPending) {
@@ -154,22 +133,6 @@ export default function AddScreen() {
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={colors.accent} />
                 </Pressable>
-                {ADS_ENABLED && userStatus.can_get_bonus && (
-                  <Pressable
-                    style={[styles.adRewardBtn, watchingAd && { opacity: 0.5 }]}
-                    onPress={handleWatchAd}
-                    disabled={watchingAd}
-                  >
-                    {watchingAd ? (
-                      <ActivityIndicator color={colors.text} />
-                    ) : (
-                      <>
-                        <Ionicons name="play-circle-outline" size={18} color={colors.text} />
-                        <Text style={styles.adRewardText}>{t('add.watchAdBonus')}</Text>
-                      </>
-                    )}
-                  </Pressable>
-                )}
               </View>
             ) : (
               <Pressable style={styles.quotaBanner} onPress={() => router.push('/paywall' as any)}>
@@ -318,18 +281,6 @@ const styles = StyleSheet.create({
   quotaUpgrade: { color: colors.accent, fontSize: 12, fontWeight: '700' },
   quotaTitle: { color: colors.text, fontSize: 14, fontWeight: '700' },
   quotaSub: { color: colors.text2, fontSize: 12, marginTop: 2 },
-  adRewardBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 44,
-    backgroundColor: colors.bg2,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-  },
-  adRewardText: { color: colors.text, fontSize: 13, fontWeight: '600' },
   card: {
     backgroundColor: colors.bg2,
     borderWidth: 1,
